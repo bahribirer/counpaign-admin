@@ -1,0 +1,136 @@
+:root {
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Mobil App Theme Compatibility */
+  --p-datatable-header-background: #27272A;
+  --p-datatable-header-color: #ffffff;
+  --p-datatable-row-background: #18181B;
+  --p-datatable-row-color: #ffffff;
+}
+
+body {
+  background-color: #09090B !important;
+  color: #FFFFFF !important;
+  margin: 0;
+}
+
+/* Force PrimeVue to use Outfit everywhere, except icons */
+.p-component,
+.p-component *:not(.pi) {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+h1 {
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #FFFFFF;
+  margin-bottom: 0.5rem;
+}
+
+p.text-secondary {
+  font-size: 1rem;
+  color: #A1A1AA !important;
+  font-weight: 400;
+}
+
+h5,
+.text-xl {
+  font-weight: 800 !important;
+  color: #FFFFFF;
+}
+
+/* Stat Numbers */
+.text-900.text-xl {
+  font-size: 2.75rem !important;
+  font-weight: 900 !important;
+  color: #FFFFFF !important;
+}
+
+/* Card Titles */
+.text-500.font-medium {
+  font-size: 0.75rem;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #A1A1AA !important;
+}
+
+/* Inputs */
+.p-inputtext {
+  border-radius: 16px !important;
+  padding: 0.875rem 1.25rem !important;
+  background: #18181B !important;
+  border: 1px solid #27272A !important;
+  color: white !important;
+}
+
+.p-inputtext:focus {
+  border-color: var(--primary-color) !important;
+}
+
+button {
+  border-radius: 16px !important;
+  font-weight: 800 !important;
+  text-transform: none;
+}
+
+/* Bento Card Style from Mobile App */
+.card {
+  background: #18181B;
+  border: 1px solid #27272A;
+  border-radius: 24px !important;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Data Table Overrides */
+.p-datatable {
+  background: transparent !important;
+}
+
+.p-datatable .p-datatable-thead>tr>th {
+  background: #27272a !important;
+  color: #a1a1aa !important;
+  border: none !important;
+  padding: 1.25rem !important;
+}
+
+.p-datatable .p-datatable-tbody>tr {
+  background: transparent !important;
+  color: white !important;
+  border-bottom: 1px solid #27272a !important;
+}
+
+.p-paginator {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Layout Specifics */
+.layout-sidebar {
+  background: #18181B !important;
+  border-right: 1px solid #27272A !important;
+}
+
+:deep(.p-menuitem-link) {
+  border-radius: 12px !important;
+  margin: 2px 0;
+}
+
+:deep(.p-menuitem-link.router-link-active) {
+  background: var(--primary-color) !important;
+  color: white !important;
+}
