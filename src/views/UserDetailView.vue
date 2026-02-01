@@ -8,7 +8,7 @@ import InputNumber from 'primevue/inputnumber';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import Toast from 'primevue/toast';
+
 import Breadcrumb from 'primevue/breadcrumb';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
