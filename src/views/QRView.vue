@@ -11,7 +11,6 @@ const toast = useToast();
 const qrDataUrl = ref('');
 const generating = ref(false);
 const token = ref('');
-const polling = ref(false);
 const showSelectionDialog = ref(false);
 const customer = ref<any>(null);
 const participations = ref<any[]>([]);

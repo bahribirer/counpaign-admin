@@ -8,7 +8,7 @@ import InputNumber from 'primevue/inputnumber';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import Card from 'primevue/card';
+import Toast from 'primevue/toast';
 import Breadcrumb from 'primevue/breadcrumb';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
@@ -109,7 +109,7 @@ const onCellEditComplete = async (event: any) => {
                 points: result.record.points,
                 stamps: result.record.stamps,
                 giftsCount: result.record.giftsCount
-            };
+            } as WalletCafe;
         }
 
         toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Cüzdan güncellendi', life: 2000 });

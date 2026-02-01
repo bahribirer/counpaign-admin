@@ -57,7 +57,7 @@ const deleteFirm = async () => {
 
         if (!response.ok) throw new Error('Failed to delete firm');
 
-        const result = await response.json();
+        await response.json();
         toast.add({ severity: 'success', summary: 'Başarılı', detail: `${firmToDelete.value.companyName} silindi`, life: 3000 });
         
         // Remove from local list
