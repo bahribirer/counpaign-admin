@@ -94,7 +94,43 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import api from '../services/api';
+import { defineComponent } from 'vue';
+
+// Local API Helper
+const API_URL = 'https://counpaign.com/api';
+
+const getHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+};
+
+const api = {
+  get: async (url: string) => {
+    const res = await fetch(`${API_URL}${url}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return { data: await res.json() };
+  },
+  post: async (url: string, data: any) => {
+    const res = await fetch(`${API_URL}${url}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return { data: await res.json() };
+  },
+  delete: async (url: string) => {
+    const res = await fetch(`${API_URL}${url}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return { data: await res.json() };
+  }
+};
 
 interface Gift {
   _id: string;
