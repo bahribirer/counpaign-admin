@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 // Initialize sidebar based on screen width
 const sidebarVisible = ref(window.innerWidth > 991);
+
+// Close sidebar on route change (mobile only)
+watch(route, () => {
+    if (window.innerWidth <= 991) {
+        sidebarVisible.value = false;
+    }
+});
 
 const items = computed(() => {
     const menuItems = [
