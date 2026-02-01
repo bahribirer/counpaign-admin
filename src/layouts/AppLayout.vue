@@ -86,6 +86,14 @@ const items = computed(() => {
                     command: () => router.push('/qr')
                 },
                 {
+                    command: () => router.push('/qr')
+                },
+                {
+                    label: 'Hediyeler',
+                    icon: 'pi pi-gift',
+                    command: () => router.push('/gifts')
+                },
+                {
                     label: 'Kampanyalar',
                     icon: 'pi pi-ticket',
                     command: () => router.push(`/manage-campaigns/${authStore.user?.businessId}`)
