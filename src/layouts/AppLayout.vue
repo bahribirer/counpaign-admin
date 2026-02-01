@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import Menu from 'primevue/menu';
@@ -8,7 +8,8 @@ import Avatar from 'primevue/avatar';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const sidebarVisible = ref(true);
+// Initialize sidebar based on screen width
+const sidebarVisible = ref(window.innerWidth > 991);
 
 const items = computed(() => {
     const menuItems = [
@@ -92,8 +93,6 @@ const toggleSidebar = () => {
     sidebarVisible.value = !sidebarVisible.value;
 };
 
-import { computed } from 'vue';
-
 const userInitial = computed(() => {
     return authStore.user?.username?.charAt(0).toUpperCase() || 'U';
 });
@@ -132,7 +131,7 @@ const pageTitle = computed(() => {
         </div>
 
         <!-- Sidebar -->
-        <div class="layout-sidebar" v-if="sidebarVisible">
+        <div class="layout-sidebar">
             <Menu :model="items" class="w-full border-none bg-transparent" />
         </div>
 
@@ -205,6 +204,7 @@ const pageTitle = computed(() => {
     transition: margin-left 0.2s;
 }
 
+/* Desktop: Inactive means Hidden */
 .layout-static-inactive .layout-sidebar {
     transform: translateX(-100%);
     left: 0;
@@ -215,19 +215,21 @@ const pageTitle = computed(() => {
 }
 
 @media (max-width: 991px) {
+    /* Mobile: Base (Active) means Shown */
     .layout-sidebar {
-        transform: translateX(-100%);
+        transform: translateX(0);
         left: 0;
-        box-shadow: none;
+        box-shadow: 0px 3px 5px rgba(0,0,0,0.02), 0px 0px 2px rgba(0,0,0,0.05), 0px 1px 4px rgba(0,0,0,0.08); /* Show shadow when open */
     }
     
     .layout-main-container {
-        padding-left: 2rem;
+        padding-left: 2rem; /* Always full width content on mobile */
     }
     
+    /* Mobile: Inactive means Hidden */
     .layout-static-inactive .layout-sidebar {
-        transform: translateX(0);
-        box-shadow: 0px 3px 5px rgba(0,0,0,0.02), 0px 0px 2px rgba(0,0,0,0.05), 0px 1px 4px rgba(0,0,0,0.08);
+        transform: translateX(-100%);
+        box-shadow: none;
     }
 }
 
