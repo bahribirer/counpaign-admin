@@ -2,8 +2,8 @@
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <img src="https://primefaces.org/cdn/primevue/images/logo.svg" alt="Logo" class="logo" />
-                <h1>Welcome Back</h1>
+                <img src="/logo.png" alt="Counpaign" class="logo" />
+                <h1>Yönetim Paneli</h1>
                 <p>Please sign in to your account</p>
             </div>
 
