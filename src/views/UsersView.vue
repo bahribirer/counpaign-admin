@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-// import { FilterMatchMode } from 'primevue/api'; // Removed broken import
+import { useAuthStore } from '../stores/auth.store'; // Import Auth Store
 
 const FilterMatchMode = {
     CONTAINS: 'contains'
@@ -28,8 +28,13 @@ interface User {
 }
 
 const router = useRouter();
+const authStore = useAuthStore(); // Use Auth Store
 const toast = useToast();
 const users = ref<User[]>([]);
+
+const sendNotification = (user: User) => {
+    toast.add({ severity: 'info', summary: 'Yakında', detail: 'Bildirim sistemi yakında aktif olacak.', life: 3000 });
+};
 const loading = ref(true);
 const deleteDialog = ref(false);
 const userToDelete = ref<User | null>(null);
@@ -78,8 +83,14 @@ const deleteUser = async () => {
 
     deleting.value = true;
     try {
+        const token = localStorage.getItem('token');
+        const headers: any = {
+            'Authorization': `Bearer ${token}`
+        };
+
         const response = await fetch(`https://counpaign.com/api/users/${userToDelete.value._id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers
         });
 
         if (!response.ok) throw new Error('Failed to delete user');
@@ -168,14 +179,27 @@ onMounted(() => {
                 <Column header="İşlemler">
                     <template #body="{ data }">
                         <div class="flex gap-2">
+                            <!-- Superadmin: View Details -->
                             <Button 
-                                icon="pi pi-user-edit" 
+                                v-if="authStore.user?.role === 'super_admin'"
+                                icon="pi pi-wallet" 
                                 severity="info" 
                                 text 
                                 rounded 
                                 @click="goToUserDetail(data._id)"
-                                v-tooltip.top="'Detay ve Cüzdan'"
+                                v-tooltip.top="'Cüzdan Yönetimi'"
                             />
+                            <!-- Business: Send Notification (Placeholder) -->
+                            <Button 
+                                v-else
+                                icon="pi pi-bell" 
+                                severity="warning" 
+                                text 
+                                rounded 
+                                @click="sendNotification(data)"
+                                v-tooltip.top="'Bildirim Gönder (Yakında)'"
+                            />
+
                             <Button 
                                 icon="pi pi-trash" 
                                 severity="danger" 

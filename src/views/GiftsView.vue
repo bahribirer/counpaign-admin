@@ -1,155 +1,276 @@
 <template>
-  <div class="gifts-view">
-    <div class="page-header">
+  <div class="gifts-view p-4">
+    <div class="flex flex-column sm:flex-row justify-content-between align-items-center mb-5 gap-3">
       <div>
-        <h1>Hediyeler</h1>
-        <p class="subtitle">Müşterilerin puanlarıyla alabileceği hediyeleri yönetin</p>
+        <h1 class="text-900 font-bold text-3xl mb-2">Hediyeler</h1>
+        <p class="text-500">Müşterilerin puanlarıyla alabileceği hediyeleri yönetin</p>
       </div>
-      <button @click="showAddModal = true" class="btn-primary">
-        <span class="material-icons">add</span>
-        Yeni Hediye Ekle
-      </button>
+      <div class="flex gap-2">
+        <Button 
+          label="Hediye Teslim Et" 
+          icon="pi pi-qrcode" 
+          severity="success"
+          @click="showRedeemModal = true" 
+        />
+        <Button 
+          label="Yeni Hediye Ekle" 
+          icon="pi pi-plus" 
+          @click="showAddModal = true" 
+          class="p-button-primary"
+        />
+      </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Hediyeler yükleniyor...</p>
+    <div v-if="loading" class="flex justify-content-center p-5">
+      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="gifts.length === 0" class="empty-state">
-      <div class="empty-icon">
-        <span class="material-icons">card_giftcard</span>
-      </div>
-      <h3>Henüz hediye eklemediniz</h3>
-      <p>Müşterilerinizin puanlarını harcayabilmesi için ilk hediyenizi oluşturun.</p>
-      <button @click="showAddModal = true" class="btn-secondary">Hediye Oluştur</button>
+    <div v-else-if="gifts.length === 0" class="surface-card p-5 border-round text-center shadow-1">
+      <i class="pi pi-gift text-500 text-5xl mb-3"></i>
+      <h3 class="text-900 font-bold text-xl mb-2">Henüz hediye eklenmemiş</h3>
+      <p class="text-500 mb-4">Müşterileriniz için ilk hediyenizi ekleyin.</p>
+      <Button label="Hediye Ekle" icon="pi pi-plus" @click="showAddModal = true" />
     </div>
 
-    <!-- Gifts Grid -->
-    <div v-else class="gifts-grid">
-      <div v-for="gift in gifts" :key="gift._id" class="gift-card">
-        <div class="gift-icon">
-          <span class="material-icons">local_cafe</span>
+    <div v-else class="grid">
+      <div v-for="gift in gifts" :key="gift._id" class="col-12 md:col-6 xl:col-4">
+        <div class="surface-card border-round-xl p-4 flex align-items-start shadow-1 border-1 surface-border hover:shadow-3 transition-duration-200 h-full relative overflow-hidden group">
+           
+           <!-- Decorative Stripe -->
+           <div class="absolute left-0 top-0 bottom-0 w-4px bg-primary border-round-left-xl"></div>
+
+           <!-- Content -->
+           <div class="flex-1 overflow-hidden pl-3 pr-2">
+             <div class="flex align-items-center mb-2">
+                <div class="flex align-items-center text-primary font-bold bg-primary-50 px-3 py-1 border-round-2xl">
+                   <i class="pi pi-star-fill mr-2 text-sm"></i>
+                   <span class="text-sm">{{ gift.pointCost }} P</span>
+                </div>
+                <div class="flex align-items-center text-500 text-xs ml-3">
+                   <i class="pi pi-calendar mr-1 opacity-70"></i>
+                   <span>{{ new Date(gift.createdAt).toLocaleDateString('tr-TR') }}</span>
+                </div>
+             </div>
+
+             <h3 class="text-900 font-bold text-lg m-0 line-height-3" style="word-break: break-word;">
+               {{ gift.title }}
+             </h3>
+           </div>
+
+           <!-- Actions -->
+           <div class="flex flex-column gap-2 ml-2">
+              <Button 
+                icon="pi pi-trash" 
+                text 
+                rounded 
+                severity="danger" 
+                class="hover:bg-red-50 w-2rem h-2rem"
+                @click="deleteGift(gift._id)" 
+                tooltip="Sil"
+              />
+              <Button 
+                icon="pi pi-pencil" 
+                text 
+                rounded 
+                severity="secondary" 
+                class="hover:bg-gray-100 w-2rem h-2rem"
+                @click="openEditModal(gift)" 
+                tooltip="Düzenle"
+              />
+           </div>
+
         </div>
-        <div class="gift-info">
-          <h3>{{ gift.title }}</h3>
-          <div class="point-badge">
-            <span class="material-icons">stars</span>
-            {{ gift.pointCost }} Puan
-          </div>
-        </div>
-        <button @click="deleteGift(gift._id)" class="btn-icon delete" title="Sil">
-          <span class="material-icons">delete</span>
-        </button>
       </div>
     </div>
 
-    <!-- Add Gift Modal -->
-    <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Yeni Hediye Ekle</h2>
-          <button @click="showAddModal = false" class="close-btn">
-            <span class="material-icons">close</span>
-          </button>
+    <!-- Add/Edit Gift Dialog -->
+    <Dialog 
+      v-model:visible="showAddModal" 
+      modal 
+      :header="editingId ? 'Hediyeyi Düzenle' : 'Yeni Hediye Ekle'" 
+      :style="{ width: '400px' }"
+      class="p-fluid"
+      @hide="resetModal"
+    >
+      <div class="field">
+        <label for="title" class="font-medium text-900">Hediye Adı</label>
+        <InputText id="title" v-model="newGift.title" placeholder="Örn: Bedava Kahve" autofocus />
+      </div>
+      <div class="field">
+        <label for="pointCost" class="font-medium text-900">Puan Değeri</label>
+        <InputNumber id="pointCost" v-model="newGift.pointCost" placeholder="Örn: 100" />
+      </div>
+
+      <template #footer>
+        <Button label="İptal" text plain @click="resetModal" />
+        <Button 
+          :label="editingId ? 'Güncelle' : 'Ekle'" 
+          icon="pi pi-check" 
+          @click="saveGift" 
+          :loading="submitting" 
+          :disabled="!newGift.title || !newGift.pointCost"
+        />
+      </template>
+    </Dialog>
+
+    <Toast />
+    <ConfirmDialog />
+
+    <!-- Redeem Gift Dialog (2-Step) -->
+    <Dialog 
+      v-model:visible="showRedeemModal" 
+      modal 
+      header="Hediye Teslim Et" 
+      :style="{ width: '600px' }"
+      class="p-fluid"
+      @hide="resetRedeemState"
+    >
+      <!-- Step 1: Input Code -->
+      <div v-if="!redemptionDetails" class="flex flex-column align-items-center mb-4 pt-4">
+        <i class="pi pi-qrcode text-6xl text-primary mb-4 opacity-70"></i>
+        <p class="text-center text-700 text-xl font-medium m-0">Müşterinin uygulamasındaki kodu giriniz.</p>
+        
+        <div class="field mt-5 w-full flex justify-content-center">
+          <InputText 
+            id="redeemCode" 
+            v-model="redeemCode" 
+            placeholder="KODU GİRİN" 
+            class="text-center text-4xl font-bold uppercase p-inputtext-lg w-8"
+            maxlength="6"
+            autofocus
+            @keyup.enter="verifyRedemption"
+          />
+        </div>
+      </div>
+
+      <!-- Step 2: Confirmation Preview -->
+      <div v-else-if="!redemptionSuccess" class="flex flex-column align-items-center mb-4 text-center pt-2">
+        <div class="border-circle w-6rem h-6rem flex align-items-center justify-content-center mb-4 shadow-2" style="background: var(--green-500); color: white;">
+          <i class="pi pi-check text-4xl"></i>
         </div>
         
-        <form @submit.prevent="createGift">
-          <div class="form-group">
-            <label>Hediye Adı</label>
-            <input 
-              v-model="newGift.title" 
-              type="text" 
-              placeholder="Örn: Filtre Kahve" 
-              required
-              autofocus
-            >
-          </div>
+        <h3 class="text-900 font-bold text-3xl mb-2">{{ redemptionDetails.customerName }}</h3>
+        <span class="text-500 font-medium text-lg mb-5 block">{{ redemptionDetails.customerEmail }}</span>
 
-          <div class="form-group">
-            <label>Puan Bedeli</label>
-            <input 
-              v-model.number="newGift.pointCost" 
-              type="number" 
-              min="1" 
-              placeholder="Örn: 400" 
-              required
-            >
-            <small>Bu hediyeyi almak için gereken puan miktarı</small>
+        <div class="surface-card border-1 surface-border border-round-xl p-5 w-full shadow-2 mt-2">
+          <p class="text-500 font-medium mb-3 uppercase text-sm tracking-widest">TESLİM EDİLECEK ÜRÜN</p>
+          <p class="text-primary font-bold text-4xl m-0 mb-4 line-height-2">{{ redemptionDetails.giftTitle }}</p>
+          
+          <!-- Dynamic Badge based on Type -->
+          <div v-if="redemptionDetails.redemptionType === 'GIFT_ENTITLEMENT'" 
+               class="inline-flex align-items-center px-4 py-2 border-round-2xl text-base font-bold"
+               style="background: rgba(156, 39, 176, 0.1); color: #AB47BC; border: 1px solid rgba(156, 39, 176, 0.2);">
+            <i class="pi pi-gift mr-2 text-xl"></i>
+            Hediye Hakkı Kullanımı
           </div>
-
-          <div class="modal-actions">
-            <button type="button" @click="showAddModal = false" class="btn-text">İptal</button>
-            <button type="submit" class="btn-primary" :disabled="submitting">
-              {{ submitting ? 'Ekleniyor...' : 'Ekle' }}
-            </button>
+          <div v-else class="inline-flex align-items-center px-4 py-2 border-round-2xl text-base font-bold"
+               style="background: rgba(255, 152, 0, 0.1); color: #FFA726; border: 1px solid rgba(255, 152, 0, 0.2);">
+            <i class="pi pi-star-fill mr-2 text-xl"></i>
+            -{{ redemptionDetails.pointCost }} Puan
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+
+      <!-- Step 3: Success -->
+      <div v-else class="flex flex-column align-items-center mb-4 text-center">
+        <div class="bg-green-500 border-circle w-6rem h-6rem flex align-items-center justify-content-center mb-4 fadein animation-duration-500">
+          <i class="pi pi-check text-white text-5xl"></i>
+        </div>
+        <h3 class="text-green-600 font-bold text-2xl mb-2">Başarılı!</h3>
+        <p class="text-600 text-lg">Hediye teslim edildi.</p>
+      </div>
+
+      <template #footer>
+        <div v-if="!redemptionDetails">
+          <Button label="İptal" text plain @click="showRedeemModal = false" />
+          <Button 
+            label="Sorgula" 
+            icon="pi pi-search" 
+            @click="verifyRedemption" 
+            :loading="verifying" 
+            :disabled="!redeemCode || redeemCode.length < 6"
+          />
+        </div>
+        <div v-else-if="!redemptionSuccess">
+          <Button label="Vazgeç" text plain @click="resetRedeemState" />
+          <Button 
+            label="Onayla ve Teslim Et" 
+            icon="pi pi-check-circle" 
+            severity="success"
+            @click="completeRedemption" 
+            :loading="redeeming"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { defineComponent } from 'vue';
+import { useAuthStore } from '../stores/auth.store'; // Import Auth Store
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import InputNumber from 'primevue/inputnumber';
+import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
 
-// Local API Helper
+// API Helper
 const API_URL = 'https://counpaign.com/api';
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
-};
-
 const api = {
-  get: async (url: string) => {
-    const res = await fetch(`${API_URL}${url}`, { headers: getHeaders() });
-    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-    return { data: await res.json() };
-  },
-  post: async (url: string, data: any) => {
-    const res = await fetch(`${API_URL}${url}`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-    return { data: await res.json() };
-  },
-  delete: async (url: string) => {
-    const res = await fetch(`${API_URL}${url}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-    return { data: await res.json() };
-  }
-};
+  async request(method: string, endpoint: string, body: any = null) {
+    const token = localStorage.getItem('token');
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-interface Gift {
-  _id: string;
-  title: string;
-  pointCost: number;
-}
+    const options: any = { method, headers };
+    if (body) options.body = JSON.stringify(body);
+
+    const res = await fetch(`${API_URL}${endpoint}`, options);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `İşlem başarısız: ${res.status}`);
+    return { data };
+  },
+  get: (url: string) => api.request('GET', url),
+  post: (url: string, body: any) => api.request('POST', url, body),
+  put: (url: string, body: any) => api.request('PUT', url, body),
+  delete: (url: string) => api.request('DELETE', url),
+};
 
 export default defineComponent({
   name: 'GiftsView',
+  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog },
+  setup() {
+    const authStore = useAuthStore();
+    const toast = useToast();
+    const confirm = useConfirm();
+    return { authStore, toast, confirm };
+  },
   data() {
     return {
-      gifts: [] as Gift[],
+      gifts: [] as any[],
       loading: true,
+      
       showAddModal: false,
+      editingId: null as string | null, // Track editing state
+      newGift: { title: '', pointCost: null },
       submitting: false,
-      newGift: {
-        title: '',
-        pointCost: null as number | null
-      }
+
+      // Redeem State
+      showRedeemModal: false,
+      redeemCode: '',
+      verifying: false,
+      redeeming: false,
+      redemptionDetails: null as any,
+      redemptionSuccess: false,
     };
   },
   async created() {
@@ -159,44 +280,127 @@ export default defineComponent({
     async fetchGifts() {
       try {
         this.loading = true;
-        const response = await api.get('/gifts/my');
-        this.gifts = response.data;
+        const res = await api.get('/gifts/my');
+        this.gifts = res.data;
       } catch (error) {
         console.error('Error fetching gifts:', error);
       } finally {
         this.loading = false;
       }
     },
-    async createGift() {
+
+    openEditModal(gift: any) {
+      this.editingId = gift._id;
+      this.newGift = { title: gift.title, pointCost: gift.pointCost };
+      this.showAddModal = true;
+    },
+
+    resetModal() {
+      this.showAddModal = false;
+      this.editingId = null;
+      this.newGift = { title: '', pointCost: null };
+    },
+
+    async saveGift() {
       if (!this.newGift.title || !this.newGift.pointCost) return;
+      
+      this.submitting = true;
+      const payload = { ...this.newGift };
 
       try {
-        this.submitting = true;
-        await api.post('/gifts', this.newGift);
-        
-        // Reset and Refresh
-        this.newGift.title = '';
-        this.newGift.pointCost = null;
-        this.showAddModal = false;
-        await this.fetchGifts();
-        
+        if (this.editingId) {
+          // UPDATE
+          const res = await api.put(`/gifts/${this.editingId}`, payload);
+          const index = this.gifts.findIndex(g => g._id === this.editingId);
+          if (index !== -1) {
+            this.gifts[index] = res.data;
+          }
+          this.toast.add({ severity: 'success', summary: 'Güncellendi', detail: 'Hediye başarıyla güncellendi', life: 3000 });
+        } else {
+          // CREATE
+          const res = await api.post('/gifts', payload);
+          this.gifts.unshift(res.data);
+          this.toast.add({ severity: 'success', summary: 'Eklendi', detail: 'Yeni hediye eklendi', life: 3000 });
+        }
+        this.resetModal();
       } catch (error) {
-        console.error('Error creating gift:', error);
-        alert('Hediye eklenirken bir hata oluştu.');
+        console.error('Error saving gift:', error);
+        this.toast.add({ severity: 'error', summary: 'Hata', detail: 'İşlem başarısız oldu.', life: 3000 });
       } finally {
         this.submitting = false;
       }
     },
-    async deleteGift(id: string) {
-      if (!confirm('Bu hediyeyi silmek istediğinize emin misiniz?')) return;
+    
+    // Kept for direct click on Add Button
+    createGift() {
+       this.saveGift();
+    },
 
+    async verifyRedemption() {
+      if (!this.redeemCode || this.redeemCode.length < 6) return;
       try {
-        await api.delete(`/gifts/${id}`);
-        this.gifts = this.gifts.filter(g => g._id !== id);
-      } catch (error) {
-        console.error('Error deleting gift:', error);
-        alert('Hediye silinemedi.');
+        this.verifying = true; 
+        const res = await api.post('/gifts/verify-redemption', { token: this.redeemCode.toUpperCase() });
+        this.redemptionDetails = res.data;
+      } catch (error: any) {
+         console.error('Verify error:', error);
+         const msg = error.message === 'Failed to fetch' ? 'Sunucuya ulaşılamadı' : (error.message || 'Eski veya süresi geçmiş kod');
+         this.toast.add({ severity: 'error', summary: 'Hata', detail: msg, life: 3000 });
+         this.redemptionDetails = null;
+      } finally {
+        this.verifying = false;
       }
+    },
+
+    async completeRedemption() {
+      if (!this.redeemCode) return;
+      try {
+        this.redeeming = true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const res = await api.post('/gifts/complete-redemption', { token: this.redeemCode.toUpperCase() });
+        
+        // Show Success Step instead of Alert
+        this.redemptionSuccess = true;
+        this.toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Hediye teslim edildi', life: 3000 });
+
+        // Auto-close after 2 seconds
+        setTimeout(() => {
+            this.showRedeemModal = false;
+        }, 2000);
+      } catch (error: any) {
+        this.toast.add({ severity: 'error', summary: 'Hata', detail: error.message || 'Teslim edilemedi.', life: 3000 });
+      } finally {
+        this.redeeming = false;
+      }
+    },
+
+    resetRedeemState() {
+      this.redeemCode = '';
+      this.redemptionDetails = null;
+      this.redemptionSuccess = false;
+      this.verifying = false;
+      this.redeeming = false;
+    },
+    
+    async deleteGift(id: string) {
+      this.confirm.require({
+        message: 'Bu hediyeyi silmek istediğinize emin misiniz?',
+        header: 'Silme Onayı',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        acceptLabel: 'Evet, Sil',
+        rejectLabel: 'Vazgeç',
+        accept: async () => {
+          try {
+            await api.delete(`/gifts/${id}`);
+            this.gifts = this.gifts.filter(g => g._id !== id);
+            this.toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Hediye silindi', life: 3000 });
+          } catch (error) {
+            console.error('Error deleting gift:', error);
+            this.toast.add({ severity: 'error', summary: 'Hata', detail: 'Hediye silinemedi.', life: 3000 });
+          }
+        },
+      });
     }
   }
 });
@@ -204,265 +408,8 @@ export default defineComponent({
 
 <style scoped>
 .gifts-view {
-  padding: 24px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-}
-
-.page-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 8px;
-}
-
-.subtitle {
-  color: #666;
-  font-size: 14px;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 64px 24px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-}
-
-.empty-icon {
-  width: 80px;
-  height: 80px;
-  background: #fff0f0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 24px;
-}
-
-.empty-icon .material-icons {
-  font-size: 40px;
-  color: #ee2c2c;
-}
-
-.empty-state h3 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.empty-state p {
-  color: #666;
-  margin-bottom: 24px;
-}
-
-/* Grid */
-.gifts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
-}
-
-.gift-card {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.gift-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-}
-
-.gift-icon {
-  width: 56px;
-  height: 56px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ee2c2c;
-}
-
-.gift-info {
-  flex: 1;
-}
-
-.gift-info h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #1a1a1a;
-}
-
-.point-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #fff4e6;
-  color: #ff9800;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.point-badge .material-icons {
-  font-size: 16px;
-}
-
-.btn-icon.delete {
-  color: #999;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.btn-icon.delete:hover {
-  color: #ef4444;
-  background: #fee2e2;
-}
-
-/* Buttons */
-.btn-primary {
-  background: #ee2c2c;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #d62525;
-}
-
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: white;
-  border: 1px solid #ee2c2c;
-  color: #ee2c2c;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-text {
-  background: transparent;
-  border: none;
-  color: #666;
-  padding: 10px 20px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background: white;
-  width: 100%;
-  max-width: 440px;
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.modal-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #666;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #374151;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 15px;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus {
-  border-color: #ee2c2c;
-  outline: none;
-}
-
-.form-group small {
-  display: block;
-  margin-top: 6px;
-  color: #9ca3af;
-  font-size: 12px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 32px;
-}
+/* PrimeFlex classes handle most styling now */
 </style>

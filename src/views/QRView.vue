@@ -171,6 +171,7 @@ const confirmParticipation = async () => {
         }
 
         toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Kampanya katılımı onaylandı', life: 3000 });
+        qrTokenId.value = ''; // Clear ID so cancel isn't triggered
         showSelectionDialog.value = false;
         qrDataUrl.value = ''; // Success, clear QR
     } catch (error: any) {
@@ -178,6 +179,38 @@ const confirmParticipation = async () => {
         toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
     } finally {
         confirming.value = false;
+    }
+};
+
+const cancelProcess = async () => {
+    if (!qrTokenId.value) return; // Already confirmed or invalid
+
+    try {
+        console.log('🚫 Cancelling QR process:', qrTokenId.value);
+        const authToken = localStorage.getItem('token');
+        const headers: any = { 'Content-Type': 'application/json' };
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        await fetch('https://counpaign.com/api/qr/cancel', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ qrTokenId: qrTokenId.value })
+        });
+        
+        // toast.add({ severity: 'info', summary: 'İptal', detail: 'İşlem iptal edildi', life: 2000 });
+    } catch (error) {
+        console.error('Cancel error:', error);
+    } finally {
+        qrTokenId.value = ''; // Prevent double cancel
+    }
+};
+
+const onDialogHide = () => {
+    // If dialog is closed and we still have a token ID, it means it wasn't confirmed.
+    if (qrTokenId.value) {
+        cancelProcess();
     }
 };
 
@@ -278,7 +311,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Campaign Selection Dialog -->
-        <Dialog v-model:visible="showSelectionDialog" header="Kampanya Onaylama" :style="{ width: '500px' }" modal>
+        <Dialog v-model:visible="showSelectionDialog" header="Kampanya Onaylama" :style="{ width: '500px' }" modal @hide="onDialogHide">
             <div class="p-4 pt-0">
                 <div v-if="customer" class="customer-info mb-4 p-3 surface-100 border-round">
                     <div class="flex align-items-center gap-3">

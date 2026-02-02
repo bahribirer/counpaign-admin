@@ -1,5 +1,26 @@
 <template>
     <div class="login-container">
+        <Toast /> 
+        
+        <!-- [NEW] Error Dialog -->
+        <Dialog v-model:visible="showErrorDialog" modal :style="{ width: '400px' }" :closable="false" class="error-dialog">
+            <template #header>
+                <div class="flex align-items-center gap-2">
+                    <i class="pi pi-times-circle text-red-500 text-2xl"></i>
+                    <span class="font-bold text-xl">Giriş Başarısız</span>
+                </div>
+            </template>
+            <div class="flex flex-column align-items-center p-3 text-center">
+                <p class="m-0 text-lg">E-posta veya şifre hatalı.</p>
+                <p class="text-secondary mt-2 text-sm">Lütfen bilgilerinizi kontrol edip tekrar deneyin.</p>
+            </div>
+            <template #footer>
+                <div class="flex justify-content-center w-full">
+                    <Button label="Tamam" severity="danger" @click="showErrorDialog = false" class="w-full" />
+                </div>
+            </template>
+        </Dialog>
+
         <div class="login-card">
             <div class="login-header">
                 <img src="/logo.png" alt="Counpaign" class="logo" />
@@ -22,9 +43,7 @@
                     <Button type="submit" label="Sign In" :loading="loading" class="w-full" />
                 </div>
 
-                <div v-if="error" class="error-message">
-                    {{ error }}
-                </div>
+
             </form>
         </div>
     </div>
@@ -35,23 +54,32 @@ import { ref } from 'vue';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog'; // [NEW]
+import Toast from 'primevue/toast'; 
+import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '../stores/auth.store';
 
 const authStore = useAuthStore();
+const toast = useToast();
 const username = ref('');
 const password = ref('');
 const loading = ref(false);
-const error = ref('');
+const showErrorDialog = ref(false); // [NEW]
 
 const handleLogin = async () => {
     loading.value = true;
-    error.value = '';
-
     try {
         await authStore.login(username.value, password.value);
+        
+        // [FIX] Store swallows error, so we must check it manually
+        if (authStore.error) {
+            throw new Error(authStore.error);
+        }
+        
         // Store handles theme application and navigation
     } catch (err: any) {
-        error.value = err.message || 'An error occurred during login';
+        // [NEW] Show Dialog instead of Toast
+        showErrorDialog.value = true;
     } finally {
         loading.value = false;
     }

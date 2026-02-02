@@ -64,11 +64,6 @@ const items = computed(() => {
                 label: 'Kullanıcılar',
                 icon: 'pi pi-users',
                 command: () => router.push('/users')
-            },
-            {
-                label: 'Settings',
-                icon: 'pi pi-cog',
-                command: () => router.push('/settings')
             }
         ]
     });

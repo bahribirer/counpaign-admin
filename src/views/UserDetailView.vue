@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth.store'; // [NEW] Import
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -51,7 +52,16 @@ const breadcrumbItems = ref([
     { label: 'Kullanıcı Detayı' }
 ]);
 
+const authStore = useAuthStore(); // [NEW] Use Store
+
 const fetchUserData = async () => {
+    // [SECURITY] Redirect if not superadmin
+    if (authStore.user?.role !== 'super_admin') {
+        toast.add({ severity: 'error', summary: 'Yetkisiz Erişim', detail: 'Bu sayfaya erişim yetkiniz yok.', life: 3000 });
+        router.push('/users'); // Redirect back
+        return;
+    }
+
     loading.value = true;
     try {
         const token = localStorage.getItem('token');

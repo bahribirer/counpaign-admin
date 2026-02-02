@@ -41,6 +41,12 @@ const fetchFirms = async () => {
     }
 };
 
+
+
+const sendNotification = (firm: Firm) => {
+    toast.add({ severity: 'info', summary: 'Yakında', detail: 'Firma bildirim sistemi yakında aktif olacak.', life: 3000 });
+};
+
 const confirmDelete = (firm: Firm) => {
     firmToDelete.value = firm;
     deleteDialog.value = true;
@@ -151,14 +157,24 @@ onMounted(() => {
 
                 <Column header="İşlemler" style="min-width: 100px">
                     <template #body="{ data }">
-                        <Button 
-                            icon="pi pi-trash" 
-                            severity="danger" 
-                            text 
-                            rounded 
-                            @click="confirmDelete(data)"
-                            v-tooltip.top="'Firmayı Sil'"
-                        />
+                        <div class="flex gap-2">
+                             <Button 
+                                icon="pi pi-bell" 
+                                severity="warning" 
+                                text 
+                                rounded 
+                                @click="sendNotification(data)"
+                                v-tooltip.top="'Bildirim Gönder'"
+                            />
+                            <Button 
+                                icon="pi pi-trash" 
+                                severity="danger" 
+                                text 
+                                rounded 
+                                @click="confirmDelete(data)"
+                                v-tooltip.top="'Firmayı Sil'"
+                            />
+                        </div>
                     </template>
                 </Column>
             </DataTable>
