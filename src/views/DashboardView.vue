@@ -12,12 +12,16 @@ const stats = ref({
     users: { total: 0, today: 0 },
     firms: { total: 0, month: 0 },
     transactions: { total: 0, today: 0, chart: [] as any[] },
-    campaigns: { active: 0 },
+    campaigns: { total: 0, active: 0 },
     participations: { total: 0, won: 0 },
     rewards: {
-        points: { earned: 0, spent: 0 },
-        stamps: { earned: 0, spent: 0 }
-    }
+        points: 0,
+        stamps: 0,
+        gifts: 0
+    },
+    notifications: { total: 0, unread: 0 },
+    reviews: { total: 0, avgRating: 0 },
+    gifts: { redeemed: 0 }
 });
 
 // Firm Stats
@@ -26,6 +30,8 @@ const firmStats = ref({
     participations: { total: 0 },
     transactions: { daily: 0, monthly: 0 },
     rewards: { weeklyPoints: 0, weeklyStamps: 0, weeklyCoffee: 0 },
+    reviews: { total: 0, avgRating: 0 },
+    gifts: { total: 0, redeemed: 0 },
     charts: {
         walletAdds: [] as any[],
         transactions: [] as any[]
@@ -85,9 +91,15 @@ const fetchFirmStats = async () => {
     if (!authStore.user?.businessId) return;
     try {
         const response = await fetch(`https://counpaign.com/api/dashboard/firm-stats?businessId=${authStore.user.businessId}`);
+        if (!response.ok) {
+            console.error('Firm stats API error:', response.status);
+            return;
+        }
         const data = await response.json();
-        firmStats.value = data;
-        updateFirmCharts();
+        if (data && data.charts) {
+            firmStats.value = data;
+            updateFirmCharts();
+        }
     } catch (error) {
         console.error('Error fetching firm stats:', error);
     }
@@ -237,26 +249,52 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- 6. Puan/Pul Özeti (New) -->
+                <!-- 6. Ödül Özeti (Clickable KPI Cards) -->
                 <div class="col-12 md:col-12 lg:col-9">
                     <div class="card p-4 h-full flex flex-column justify-content-center">
                         <span class="block text-500 font-medium mb-3">Ödül Özeti</span>
                         <div class="grid">
-                            <div class="col-6 md:col-3 text-center border-right-1 surface-border">
-                                <div class="text-2xl font-bold text-primary mb-1">{{ stats.rewards.points.earned }}</div>
-                                <div class="text-sm text-500">Kazanılan Puan</div>
+                            <div class="col-12 md:col-4">
+                                <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/points-detail')">
+                                    <div class="flex align-items-center gap-3">
+                                        <div class="bg-purple-100 border-circle p-2">
+                                            <i class="pi pi-star text-purple-500"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-500 text-sm">Kazanılan Puan</div>
+                                            <div class="text-xl font-bold text-purple-500">{{ stats.rewards.points?.toLocaleString('tr-TR') || 0 }}</div>
+                                        </div>
+                                        <i class="pi pi-chevron-right text-400"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-6 md:col-3 text-center border-right-1 surface-border">
-                                <div class="text-2xl font-bold text-pink-500 mb-1">{{ stats.rewards.points.spent }}</div>
-                                <div class="text-sm text-500">Harcanan Puan</div>
+                            <div class="col-12 md:col-4">
+                                <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/stamps-detail')">
+                                    <div class="flex align-items-center gap-3">
+                                        <div class="bg-yellow-100 border-circle p-2">
+                                            <i class="pi pi-box text-yellow-500"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-500 text-sm">Kazanılan Pul</div>
+                                            <div class="text-xl font-bold text-yellow-500">{{ stats.rewards.stamps?.toLocaleString('tr-TR') || 0 }}</div>
+                                        </div>
+                                        <i class="pi pi-chevron-right text-400"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-6 md:col-3 text-center border-right-1 surface-border">
-                                <div class="text-2xl font-bold text-primary mb-1">{{ stats.rewards.stamps.earned }}</div>
-                                <div class="text-sm text-500">Kazanılan Pul</div>
-                            </div>
-                            <div class="col-6 md:col-3 text-center">
-                                <div class="text-2xl font-bold text-pink-500 mb-1">{{ stats.rewards.stamps.spent }}</div>
-                                <div class="text-sm text-500">Harcanan Pul / Kahve</div>
+                            <div class="col-12 md:col-4">
+                                <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/gifts-detail')">
+                                    <div class="flex align-items-center gap-3">
+                                        <div class="bg-teal-100 border-circle p-2">
+                                            <i class="pi pi-gift text-teal-500"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-500 text-sm">Kullanılan Hediye</div>
+                                            <div class="text-xl font-bold text-teal-500">{{ stats.rewards.gifts?.toLocaleString('tr-TR') || 0 }}</div>
+                                        </div>
+                                        <i class="pi pi-chevron-right text-400"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -275,19 +313,48 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- 8. Toplam Giriş (Renamed Sales Summary) -->
+                <!-- 8. Özet İstatistikler -->
                 <div class="col-12 xl:col-4 mt-4">
-                    <div class="card h-full flex flex-column align-items-center justify-content-center text-center">
-                        <div class="mb-3 bg-blue-50 border-circle p-4">
-                            <i class="pi pi-user text-blue-500 text-4xl"></i>
-                        </div>
-                        <h5 class="text-2xl font-bold mb-2">Toplam Giriş</h5>
-                        <p class="text-secondary mb-4">Uygulamaya yapılan günlük girişler</p>
-                        <div class="text-4xl font-bold text-900 mb-2">0</div>
-                        <span class="text-green-500 font-medium">+0% <span class="text-500">geçen haftaya göre</span></span>
+                    <div class="card h-full p-4">
+                        <h5 class="text-xl font-bold mb-4">Özet İstatistikler</h5>
                         
-                        <div class="mt-5 w-full">
-                            <Button label="Detaylı Rapor" icon="pi pi-file" outlined class="w-full" />
+                        <!-- Reviews -->
+                        <div class="flex align-items-center mb-4 pb-3 border-bottom-1 surface-border">
+                            <div class="mr-3 bg-yellow-100 border-circle p-3">
+                                <i class="pi pi-star-fill text-yellow-500 text-xl"></i>
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-500 text-sm">Değerlendirmeler</span>
+                                <div class="flex align-items-center gap-2 mt-1">
+                                    <span class="text-900 font-bold text-xl">{{ stats.reviews?.total || 0 }}</span>
+                                    <span class="text-yellow-500 font-medium">⭐ {{ stats.reviews?.avgRating || 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="flex align-items-center mb-4 pb-3 border-bottom-1 surface-border">
+                            <div class="mr-3 bg-blue-100 border-circle p-3">
+                                <i class="pi pi-bell text-blue-500 text-xl"></i>
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-500 text-sm">Bildirimler</span>
+                                <div class="flex align-items-center gap-2 mt-1">
+                                    <span class="text-900 font-bold text-xl">{{ stats.notifications?.total || 0 }}</span>
+                                    <span class="text-orange-500 font-medium text-sm">{{ stats.notifications?.unread || 0 }} okunmadı</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gifts -->
+                        <div class="flex align-items-center">
+                            <div class="mr-3 bg-pink-100 border-circle p-3">
+                                <i class="pi pi-gift text-pink-500 text-xl"></i>
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-500 text-sm">Kullanılan Hediyeler</span>
+                                <div class="text-900 font-bold text-xl mt-1">{{ stats.gifts?.redeemed || 0 }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -352,38 +419,73 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Stats Cards Row 2 (Weekly Rewards) -->
+            <!-- Stats Cards Row 2 (Weekly Rewards) - Clickable -->
             <div class="grid mb-4">
                  <div class="col-12 md:col-4">
-                    <div class="card p-4 h-full flex align-items-center">
+                    <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/points-detail')">
                         <div class="mr-3 bg-purple-100 border-circle p-3">
                             <i class="pi pi-star text-purple-500 text-xl"></i>
                         </div>
-                         <div>
+                         <div class="flex-1">
                              <span class="text-500 font-medium text-sm">Kazandırdığı Puan (Haftalık)</span>
                              <div class="text-900 font-bold text-xl mt-1">{{ firmStats?.rewards?.weeklyPoints || 0 }} Puan</div>
                         </div>
+                        <i class="pi pi-chevron-right text-400"></i>
                     </div>
                  </div>
                  <div class="col-12 md:col-4">
-                    <div class="card p-4 h-full flex align-items-center">
+                    <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/stamps-detail')">
                         <div class="mr-3 bg-yellow-100 border-circle p-3">
                             <i class="pi pi-box text-yellow-500 text-xl"></i>
                         </div>
-                        <div>
+                        <div class="flex-1">
                              <span class="text-500 font-medium text-sm">Kazandırdığı Pul (Haftalık)</span>
                              <div class="text-900 font-bold text-xl mt-1">{{ firmStats?.rewards?.weeklyStamps || 0 }} Pul</div>
                         </div>
+                        <i class="pi pi-chevron-right text-400"></i>
                     </div>
                  </div>
                  <div class="col-12 md:col-4">
-                    <div class="card p-4 h-full flex align-items-center">
+                    <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/gifts-detail')">
                          <div class="mr-3 bg-teal-100 border-circle p-3">
                             <i class="pi pi-gift text-teal-500 text-xl"></i>
                         </div>
-                        <div>
+                        <div class="flex-1">
                              <span class="text-500 font-medium text-sm">Kazandırdığı Hediye (Haftalık)</span>
                              <div class="text-900 font-bold text-xl mt-1">{{ firmStats?.rewards?.weeklyCoffee || 0 }} Adet</div>
+                        </div>
+                        <i class="pi pi-chevron-right text-400"></i>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Reviews & Gifts Row -->
+            <div class="grid mb-4">
+                 <div class="col-12 md:col-6">
+                    <div class="card p-4 h-full flex align-items-center">
+                        <div class="mr-3 bg-orange-100 border-circle p-3">
+                            <i class="pi pi-star-fill text-orange-500 text-xl"></i>
+                        </div>
+                         <div class="flex-1">
+                             <span class="text-500 font-medium text-sm">Değerlendirmeler</span>
+                             <div class="flex align-items-center gap-3 mt-1">
+                                 <span class="text-900 font-bold text-xl">{{ firmStats?.reviews?.total || 0 }} Yorum</span>
+                                 <span class="text-orange-500 font-medium">⭐ {{ firmStats?.reviews?.avgRating || 0 }}</span>
+                             </div>
+                        </div>
+                    </div>
+                 </div>
+                 <div class="col-12 md:col-6">
+                    <div class="card p-4 h-full flex align-items-center">
+                        <div class="mr-3 bg-pink-100 border-circle p-3">
+                            <i class="pi pi-gift text-pink-500 text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                             <span class="text-500 font-medium text-sm">Hediyeler</span>
+                             <div class="flex align-items-center gap-3 mt-1">
+                                 <span class="text-900 font-bold text-xl">{{ firmStats?.gifts?.total || 0 }} Toplam</span>
+                                 <span class="text-green-500 font-medium">{{ firmStats?.gifts?.redeemed || 0 }} Kullanıldı</span>
+                             </div>
                         </div>
                     </div>
                  </div>
@@ -421,5 +523,13 @@ onMounted(() => {
 .card {
     border: 1px solid var(--surface-border);
     box-shadow: none !important;
+}
+.kpi-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.kpi-card:hover {
+    background: var(--surface-hover);
+    transform: translateY(-2px);
 }
 </style>

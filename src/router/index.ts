@@ -61,6 +61,56 @@ const router = createRouter({
                     path: 'gifts',
                     name: 'Gifts',
                     component: () => import('../views/GiftsView.vue'),
+                },
+                {
+                    path: 'reviews',
+                    name: 'Reviews',
+                    component: () => import('../views/ReviewsView.vue'),
+                },
+                {
+                    path: 'notifications',
+                    name: 'Notifications',
+                    component: () => import('../views/NotificationsView.vue'),
+                },
+                {
+                    path: 'admin/business-notifications',
+                    name: 'AdminBusinessNotifications',
+                    component: () => import('../views/AdminBusinessNotificationsView.vue'),
+                },
+                {
+                    path: 'admin/user-notifications',
+                    name: 'AdminUserNotifications',
+                    component: () => import('../views/AdminUserNotificationsView.vue'),
+                },
+                {
+                    path: 'points-detail',
+                    name: 'PointsDetail',
+                    component: () => import('../views/PointsDetailView.vue'),
+                },
+                {
+                    path: 'stamps-detail',
+                    name: 'StampsDetail',
+                    component: () => import('../views/StampsDetailView.vue'),
+                },
+                {
+                    path: 'gifts-detail',
+                    name: 'GiftsDetail',
+                    component: () => import('../views/GiftsDetailView.vue'),
+                },
+                {
+                    path: 'admin/points-detail',
+                    name: 'AdminPointsDetail',
+                    component: () => import('../views/AdminPointsDetailView.vue'),
+                },
+                {
+                    path: 'admin/stamps-detail',
+                    name: 'AdminStampsDetail',
+                    component: () => import('../views/AdminStampsDetailView.vue'),
+                },
+                {
+                    path: 'admin/gifts-detail',
+                    name: 'AdminGiftsDetail',
+                    component: () => import('../views/AdminGiftsDetailView.vue'),
                 }
             ]
         }

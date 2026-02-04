@@ -15,6 +15,18 @@ export const useAuthStore = defineStore('auth', () => {
     const isAuthenticated = computed(() => !!user.value);
     const currentTheme = computed(() => user.value?.theme || 'default');
 
+    // Initialize token from localStorage
+    const token = ref(localStorage.getItem('token') || '');
+
+    function updateToken(newToken: string | null) {
+        token.value = newToken || '';
+        if (newToken) {
+            localStorage.setItem('token', newToken);
+        } else {
+            localStorage.removeItem('token');
+        }
+    }
+
     async function login(username: string, password: string) {
         isLoading.value = true;
         error.value = '';
@@ -28,6 +40,13 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             user.value = loggedUser;
+
+            // We need to retrieve the token that AuthService set in localStorage, 
+            // OR ideally AuthService should return it. 
+            // Since AuthService.login sets LS 'token', we can grab it.
+            // But better: Update token ref here.
+            token.value = localStorage.getItem('token') || '';
+
             localStorage.setItem('user', JSON.stringify(loggedUser));
 
             // Force apply theme IMMEDIATELY and SYNCHRONOUSLY
@@ -48,13 +67,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     function logout() {
         user.value = null;
+        token.value = '';
         localStorage.removeItem('user');
-        AuthService.logout();
+        AuthService.logout(); // Clears LS token
+        // storage event doesn't trigger on same window, so we must manually update if needed
         router.push('/login');
     }
 
     return {
         user,
+        token,
         isLoading,
         error,
         isAuthenticated,

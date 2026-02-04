@@ -6,6 +6,7 @@ import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
+import Tooltip from 'primevue/tooltip';
 import { ThemeService } from './services/theme.service';
 import './style.css';
 
@@ -37,5 +38,6 @@ app.use(PrimeVue, {
 });
 app.use(ToastService);
 app.use(ConfirmationService);
+app.directive('tooltip', Tooltip);
 
 app.mount('#app');

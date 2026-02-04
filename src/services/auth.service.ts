@@ -1,6 +1,6 @@
 import { type UserInfo } from '../types/auth.types';
 
-const API_URL = 'https://counpaign.com/api/auth/admin';
+const API_URL = `${import.meta.env.VITE_API_URL}/auth/admin`;
 
 export class AuthService {
 

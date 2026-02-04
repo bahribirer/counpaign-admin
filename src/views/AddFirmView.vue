@@ -99,6 +99,23 @@
                         />
                         <small>Bu alan kilitlidir</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="stampsTarget">Hediye İçin Damga Sayısı</label>
+                        <InputNumber 
+                            id="stampsTarget" 
+                            v-model="formData.settings.stampsTarget" 
+                            showButtons
+                            buttonLayout="horizontal"
+                            :min="1"
+                            :max="20"
+                            decrementButtonClass="p-button-secondary"
+                            incrementButtonClass="p-button-secondary"
+                            incrementButtonIcon="pi pi-plus"
+                            decrementButtonIcon="pi pi-minus"
+                        />
+                        <small>Bir hediye kazanmak için gereken damga sayısı (Varsayılan: 6)</small>
+                    </div>
                 </div>
 
                 <!-- Konum Bilgileri -->
@@ -167,6 +184,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import InputText from 'primevue/inputtext';
+import InputNumber from 'primevue/inputnumber';
 import Password from 'primevue/password';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
@@ -180,13 +198,16 @@ const formData = ref({
     email: '',
     password: '',
     settings: {
-        category: 'kafe',
+        category: 'Kafe',
         logo: null as File | null,
         cardColor: '#EE2C2C',
         cardIcon: 'local_cafe_rounded',
         city: 'Ankara',
         district: '',
-        neighborhood: ''
+        city: 'Ankara',
+        district: '',
+        neighborhood: '',
+        stampsTarget: 6
     }
 });
 
@@ -197,11 +218,69 @@ const loading = ref(false);
 const error = ref('');
 const success = ref('');
 
-const handleFileChange = (event: Event) => {
+const handleFileChange = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
-        formData.value.settings.logo = target.files[0];
+        try {
+            const compressedFile = await compressImage(target.files[0]);
+            formData.value.settings.logo = compressedFile;
+            // Preview logic could go here if needed
+        } catch (e) {
+            console.error("Compression failed", e);
+            error.value = "Resim işlenirken hata oluştu.";
+        }
     }
+};
+
+// Helper: Compress Image to prevent 413 Errors
+const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800;
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+
+                // Resume logic
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            type: 'image/jpeg',
+                            lastModified: Date.now(),
+                        });
+                        resolve(newFile);
+                    } else {
+                        reject(new Error('Canvas to Blob failed'));
+                    }
+                }, 'image/jpeg', 0.7); // 0.7 Quality
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
 };
 
 const onDistrictChange = () => {
@@ -225,7 +304,10 @@ const handleSubmit = async () => {
             cardIcon: formData.value.settings.cardIcon,
             city: formData.value.settings.city,
             district: formData.value.settings.district,
-            neighborhood: formData.value.settings.neighborhood
+            city: formData.value.settings.city,
+            district: formData.value.settings.district,
+            neighborhood: formData.value.settings.neighborhood,
+            stampsTarget: formData.value.settings.stampsTarget
         }));
         
         if (formData.value.settings.logo) {
@@ -251,13 +333,16 @@ const handleSubmit = async () => {
             email: '',
             password: '',
             settings: {
-                category: 'kafe',
+                category: 'Kafe',
                 logo: null,
                 cardColor: '#EE2C2C',
                 cardIcon: 'local_cafe_rounded',
                 city: 'Ankara',
                 district: '',
-                neighborhood: ''
+                city: 'Ankara',
+                district: '',
+                neighborhood: '',
+                stampsTarget: 6
             }
         };
         neighborhoods.value = [];

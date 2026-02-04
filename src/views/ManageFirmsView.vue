@@ -27,6 +27,13 @@ const deleteDialog = ref(false);
 const firmToDelete = ref<Firm | null>(null);
 const deleting = ref(false);
 
+// Notification State
+const selectedFirms = ref<Firm[]>([]);
+const notificationDialog = ref(false);
+const notificationMessage = ref('');
+const sendingNotification = ref(false);
+import Textarea from 'primevue/textarea';
+
 const fetchFirms = async () => {
     loading.value = true;
     try {
@@ -43,8 +50,47 @@ const fetchFirms = async () => {
 
 
 
-const sendNotification = (firm: Firm) => {
-    toast.add({ severity: 'info', summary: 'Yakında', detail: 'Firma bildirim sistemi yakında aktif olacak.', life: 3000 });
+const openNotificationDialog = () => {
+    notificationMessage.value = '';
+    notificationDialog.value = true;
+};
+
+const sendBulkNotification = async () => {
+    if (!notificationMessage.value.trim()) {
+        toast.add({ severity: 'warn', summary: 'Uyarı', detail: 'Lütfen bir mesaj giriniz.', life: 3000 });
+        return;
+    }
+
+    sendingNotification.value = true;
+    try {
+        const token = localStorage.getItem('token');
+        const businessIds = selectedFirms.value.map(f => f._id);
+
+        const response = await fetch('https://counpaign.com/api/notifications/send-business', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                businessIds,
+                title: 'Sistem Bildirimi',
+                body: notificationMessage.value
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.message || 'Bildirim gönderilemedi.');
+        
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: data.message, life: 3000 });
+        notificationDialog.value = false;
+        selectedFirms.value = []; // Clear selection
+    } catch (error: any) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: error.message || 'Bildirim gönderilemedi.', life: 3000 });
+    } finally {
+        sendingNotification.value = false;
+    }
 };
 
 const confirmDelete = (firm: Firm) => {
@@ -101,7 +147,9 @@ onMounted(() => {
         </div>
 
         <div class="card">
+
             <DataTable 
+                v-model:selection="selectedFirms"
                 :value="firms" 
                 :loading="loading"
                 :paginator="true" 
@@ -112,12 +160,27 @@ onMounted(() => {
                 responsiveLayout="scroll"
                 class="p-datatable-firms"
             >
+                <template #header>
+                    <div class="flex justify-content-between align-items-center">
+                        <div class="flex align-items-center gap-2">
+                             <Button 
+                                v-if="selectedFirms.length > 0"
+                                :label="`Bildirim Gönder (${selectedFirms.length})`" 
+                                icon="pi pi-bell" 
+                                severity="warning" 
+                                @click="openNotificationDialog"
+                            />
+                        </div>
+                    </div>
+                </template>
                 <template #empty>
                     <div class="empty-state">
                         <i class="pi pi-building" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
                         <p>Henüz firma bulunmuyor</p>
                     </div>
                 </template>
+
+                <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
                 <Column field="companyName" header="Firma Adı" sortable style="min-width: 200px">
                     <template #body="{ data }">
@@ -158,14 +221,7 @@ onMounted(() => {
                 <Column header="İşlemler" style="min-width: 100px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                             <Button 
-                                icon="pi pi-bell" 
-                                severity="warning" 
-                                text 
-                                rounded 
-                                @click="sendNotification(data)"
-                                v-tooltip.top="'Bildirim Gönder'"
-                            />
+                             <!-- Replaced individual button with bulk action -->
                             <Button 
                                 icon="pi pi-trash" 
                                 severity="danger" 
@@ -211,6 +267,24 @@ onMounted(() => {
                     @click="deleteFirm" 
                     :loading="deleting"
                 />
+            </template>
+        </Dialog>
+
+
+        <!-- Notification Dialog -->
+        <Dialog v-model:visible="notificationDialog" header="Firma Bildirimi Gönder" :style="{ width: '500px' }" modal>
+            <div class="flex flex-column gap-3">
+                <span class="text-secondary block">
+                    Seçili <strong>{{ selectedFirms.length }}</strong> firmaya bildirim gönderilecek.
+                </span>
+                <div class="flex flex-column gap-2">
+                    <label for="message" class="font-bold">Mesaj İçeriği</label>
+                    <Textarea id="message" v-model="notificationMessage" rows="5" placeholder="Firma panellerine düşecek mesaj..." autoResize />
+                </div>
+            </div>
+            <template #footer>
+                <Button label="İptal" icon="pi pi-times" text @click="notificationDialog = false" :disabled="sendingNotification" />
+                <Button label="Gönder" icon="pi pi-send" severity="warning" @click="sendBulkNotification" :loading="sendingNotification" />
             </template>
         </Dialog>
     </div>

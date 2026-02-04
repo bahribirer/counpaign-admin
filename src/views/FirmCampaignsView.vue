@@ -182,21 +182,75 @@ const openNew = async () => {
     campaignDialog.value = true;
 };
 
-const onFileSelect = (event: any) => {
+const onFileSelect = async (event: any) => {
     const file = event.files[0];
     if (file) {
-        if (file.size > 10 * 1024 * 1024) {
-            toast.add({ severity: 'error', summary: 'Hata', detail: 'Dosya boyutu 10MB\'dan büyük olamaz.', life: 3000 });
+        try {
+            const compressedFile = await compressImage(file);
+            selectedFile.value = compressedFile;
+            
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewUrl.value = e.target?.result as string;
+            };
+            reader.readAsDataURL(compressedFile);
+        } catch (e) {
+            console.error("Compression failed", e);
+            toast.add({ severity: 'error', summary: 'Hata', detail: 'Resim işlenirken hata oluştu.', life: 3000 });
             selectedFile.value = null;
-            return;
         }
-        selectedFile.value = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            previewUrl.value = e.target?.result as string;
-        };
-        reader.readAsDataURL(file);
     }
+};
+
+// Helper: Compress Image to prevent 413 Errors
+const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800;
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            type: 'image/jpeg',
+                            lastModified: Date.now(),
+                        });
+                        resolve(newFile);
+                    } else {
+                        reject(new Error('Canvas to Blob failed'));
+                    }
+                }, 'image/jpeg', 0.7);
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
 };
 
 const hideDialog = () => {

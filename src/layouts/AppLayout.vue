@@ -1,16 +1,93 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
+import Badge from 'primevue/badge';
+import Popover from 'primevue/popover';
+import Dialog from 'primevue/dialog';
+import axios from 'axios';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 // Initialize sidebar based on screen width
 const sidebarVisible = ref(window.innerWidth > 991);
+
+// Notification State
+const notifications = ref([]);
+const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
+const op = ref(); // OverlayPanel Ref
+
+const toggleNotifications = (event) => {
+    op.value.toggle(event);
+};
+
+// Detail Dialog Logic
+const detailDialog = ref(false);
+const selectedNotification = ref(null);
+
+const openNotificationDetail = (notif) => {
+    selectedNotification.value = notif;
+    detailDialog.value = true;
+    
+    // Auto-mark as read when opened? User requested explicit "readable", but usually opening means read.
+    // Let's mark it as read immediately for better UX, or wait for button?
+    // User said "okundu olarak işaretlenebilsin" (can be marked). Let's do it on button click OR open.
+    // I'll leave the button for explicit action, but maybe mark it when opening is smoother?
+    // Let's stick to Button to be "Clickable" per request.
+};
+
+const markSelectedAsRead = async () => {
+    if (selectedNotification.value) {
+        await markAsRead(selectedNotification.value);
+        detailDialog.value = false;
+    }
+};
+
+const fetchNotifications = async () => {
+    if (authStore.user?.role !== 'business') return;
+    try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/notifications/my-notifications`, {
+            headers: { Authorization: `Bearer ${authStore.token}` }
+        });
+        if (Array.isArray(res.data)) {
+            notifications.value = res.data;
+        } else {
+            console.warn("Notifications response is not an array:", res.data);
+            notifications.value = [];
+        }
+    } catch (e) {
+        console.error("Fetch Notifications Error:", e);
+    }
+};
+
+const markAsRead = async (notification) => {
+    if (notification.isRead) return;
+    try {
+        await axios.put(`${import.meta.env.VITE_API_URL}/notifications/${notification._id}/read`, {}, {
+            headers: { Authorization: `Bearer ${authStore.token}` }
+        });
+        notification.isRead = true;
+    } catch (e) {
+        console.error("Mark Read Error:", e);
+    }
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+};
+
+onMounted(() => {
+    fetchNotifications();
+    // Refresh every 30s
+    setInterval(fetchNotifications, 30000);
+});
 
 // Close sidebar on route change (mobile only)
 watch(route, () => {
@@ -55,6 +132,23 @@ const items = computed(() => {
                 }
             ]
         });
+
+        // Add Bildirim Yönetimi for super_admin
+        menuItems.push({
+            label: 'Bildirim Yönetimi',
+            items: [
+                {
+                    label: 'Firma Bildirimleri',
+                    icon: 'pi pi-building',
+                    command: () => router.push('/admin/business-notifications')
+                },
+                {
+                    label: 'Kullanıcı Bildirimleri',
+                    icon: 'pi pi-users',
+                    command: () => router.push('/admin/user-notifications')
+                }
+            ]
+        });
     }
 
     menuItems.push({
@@ -64,7 +158,13 @@ const items = computed(() => {
                 label: 'Kullanıcılar',
                 icon: 'pi pi-users',
                 command: () => router.push('/users')
-            }
+            },
+            // Only show for Super Admin here
+            ...(authStore.user?.role === 'super_admin' ? [{
+                label: 'Değerlendirmeler',
+                icon: 'pi pi-star',
+                command: () => router.push('/reviews')
+            }] : [])
         ]
     });
 
@@ -81,9 +181,6 @@ const items = computed(() => {
                     command: () => router.push('/qr')
                 },
                 {
-                    command: () => router.push('/qr')
-                },
-                {
                     label: 'Hediyeler',
                     icon: 'pi pi-gift',
                     command: () => router.push('/gifts')
@@ -92,6 +189,11 @@ const items = computed(() => {
                     label: 'Kampanyalar',
                     icon: 'pi pi-ticket',
                     command: () => router.push(`/manage-campaigns/${authStore.user?.businessId}`)
+                },
+                {
+                    label: 'Değerlendirmeler',
+                    icon: 'pi pi-star',
+                    command: () => router.push('/reviews')
                 }
             ]
         });
@@ -132,7 +234,13 @@ const pageTitle = computed(() => {
             </div>
             
             <div class="topbar-end">
-                <Button icon="pi pi-bell" text rounded severity="secondary" class="mr-2" />
+                <!-- Notifications (Business Only) -->
+                <div v-if="authStore.user?.role === 'business'" class="mr-3 relative">
+                     <Button icon="pi pi-bell" text rounded severity="secondary" @click="router.push('/notifications')">
+                        <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" class="absolute -top-1 -right-1" />
+                     </Button>
+                </div>
+
                 <div class="user-profile">
                     <span class="mr-2 font-medium">{{ authStore.user?.username }}</span>
                     <Avatar :label="userInitial" shape="circle" size="normal" style="background-color: var(--primary-color); color: var(--primary-color-text)" />
