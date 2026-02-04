@@ -204,8 +204,6 @@ const formData = ref({
         cardIcon: 'local_cafe_rounded',
         city: 'Ankara',
         district: '',
-        city: 'Ankara',
-        district: '',
         neighborhood: '',
         stampsTarget: 6
     }
@@ -304,8 +302,6 @@ const handleSubmit = async () => {
             cardIcon: formData.value.settings.cardIcon,
             city: formData.value.settings.city,
             district: formData.value.settings.district,
-            city: formData.value.settings.city,
-            district: formData.value.settings.district,
             neighborhood: formData.value.settings.neighborhood,
             stampsTarget: formData.value.settings.stampsTarget
         }));
@@ -337,8 +333,6 @@ const handleSubmit = async () => {
                 logo: null,
                 cardColor: '#EE2C2C',
                 cardIcon: 'local_cafe_rounded',
-                city: 'Ankara',
-                district: '',
                 city: 'Ankara',
                 district: '',
                 neighborhood: '',

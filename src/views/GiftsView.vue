@@ -357,7 +357,7 @@ export default defineComponent({
       try {
         this.redeeming = true;
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const res = await api.post('/gifts/complete-redemption', { token: this.redeemCode.toUpperCase() });
+        await api.post('/gifts/complete-redemption', { token: this.redeemCode.toUpperCase() });
         
         // Show Success Step instead of Alert
         this.redemptionSuccess = true;

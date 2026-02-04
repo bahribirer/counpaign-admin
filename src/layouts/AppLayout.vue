@@ -6,8 +6,6 @@ import Menu from 'primevue/menu';
 import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
-import Popover from 'primevue/popover';
-import Dialog from 'primevue/dialog';
 import axios from 'axios';
 
 const router = useRouter();
@@ -17,35 +15,8 @@ const authStore = useAuthStore();
 const sidebarVisible = ref(window.innerWidth > 991);
 
 // Notification State
-const notifications = ref([]);
-const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
-const op = ref(); // OverlayPanel Ref
-
-const toggleNotifications = (event) => {
-    op.value.toggle(event);
-};
-
-// Detail Dialog Logic
-const detailDialog = ref(false);
-const selectedNotification = ref(null);
-
-const openNotificationDetail = (notif) => {
-    selectedNotification.value = notif;
-    detailDialog.value = true;
-    
-    // Auto-mark as read when opened? User requested explicit "readable", but usually opening means read.
-    // Let's mark it as read immediately for better UX, or wait for button?
-    // User said "okundu olarak işaretlenebilsin" (can be marked). Let's do it on button click OR open.
-    // I'll leave the button for explicit action, but maybe mark it when opening is smoother?
-    // Let's stick to Button to be "Clickable" per request.
-};
-
-const markSelectedAsRead = async () => {
-    if (selectedNotification.value) {
-        await markAsRead(selectedNotification.value);
-        detailDialog.value = false;
-    }
-};
+const notifications = ref<any[]>([]);
+const unreadCount = computed(() => notifications.value.filter((n: any) => !n.isRead).length);
 
 const fetchNotifications = async () => {
     if (authStore.user?.role !== 'business') return;
@@ -62,25 +33,6 @@ const fetchNotifications = async () => {
     } catch (e) {
         console.error("Fetch Notifications Error:", e);
     }
-};
-
-const markAsRead = async (notification) => {
-    if (notification.isRead) return;
-    try {
-        await axios.put(`${import.meta.env.VITE_API_URL}/notifications/${notification._id}/read`, {}, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
-        notification.isRead = true;
-    } catch (e) {
-        console.error("Mark Read Error:", e);
-    }
-};
-
-const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
 onMounted(() => {

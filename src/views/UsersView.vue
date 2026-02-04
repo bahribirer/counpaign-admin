@@ -40,9 +40,6 @@ const toast = useToast();
 const users = ref<User[]>([]);
 const firms = ref<Firm[]>([]);
 
-const sendNotification = (user: User) => {
-    toast.add({ severity: 'info', summary: 'Yakında', detail: 'Bildirim sistemi yakında aktif olacak.', life: 3000 });
-};
 const loading = ref(true);
 const deleteDialog = ref(false);
 const userToDelete = ref<User | null>(null);

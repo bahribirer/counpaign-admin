@@ -18,15 +18,6 @@ export const useAuthStore = defineStore('auth', () => {
     // Initialize token from localStorage
     const token = ref(localStorage.getItem('token') || '');
 
-    function updateToken(newToken: string | null) {
-        token.value = newToken || '';
-        if (newToken) {
-            localStorage.setItem('token', newToken);
-        } else {
-            localStorage.removeItem('token');
-        }
-    }
-
     async function login(username: string, password: string) {
         isLoading.value = true;
         error.value = '';

@@ -56,11 +56,9 @@ import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog'; // [NEW]
 import Toast from 'primevue/toast'; 
-import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '../stores/auth.store';
 
 const authStore = useAuthStore();
-const toast = useToast();
 const username = ref('');
 const password = ref('');
 const loading = ref(false);
