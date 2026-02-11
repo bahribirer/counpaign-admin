@@ -69,7 +69,7 @@ const generateQR = async (firm: Firm) => {
 
         // Update local data
         const idx = firms.value.findIndex(f => f._id === firm._id);
-        if (idx !== -1) firms.value[idx].staticQR = data.staticQR;
+        if (idx !== -1) firms.value[idx]!.staticQR = data.staticQR;
 
         toast.add({ severity: 'success', summary: 'Başarılı', detail: `${firm.companyName} için QR oluşturuldu`, life: 3000 });
 
