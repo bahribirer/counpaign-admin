@@ -6,45 +6,56 @@ import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import QRCode from 'qrcode';
+import { jsPDF } from 'jspdf';
+import { useAuthStore } from '../stores/auth.store';
 
 const toast = useToast();
+const authStore = useAuthStore();
 const qrDataUrl = ref('');
-const generating = ref(false);
-const token = ref('');
+const loading = ref(true);
+const staticQRToken = ref('');
+const companyName = ref('');
 const showSelectionDialog = ref(false);
+const showGiftDialog = ref(false);
 const customer = ref<any>(null);
 const participations = ref<any[]>([]);
+const giftRedemption = ref<any>(null);
 const selectedParticipation = ref<any>(null);
 const confirming = ref(false);
 const qrTokenId = ref('');
-let refreshInterval: number | null = null;
+const noQR = ref(false);
+const generatingQR = ref(false);
 let statusPollingInterval: number | null = null;
 
-const generateQR = async () => {
-    generating.value = true;
+// Fetch the firm's permanent static QR
+const fetchStaticQR = async () => {
+    loading.value = true;
+    noQR.value = false;
     try {
-        const authToken = localStorage.getItem('token');
-        const headers: any = {};
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
+        const businessId = authStore.user?.businessId;
+        if (!businessId) {
+            throw new Error('Business ID bulunamadı');
         }
 
-        const response = await fetch('https://counpaign.com/api/qr/generate', {
-            method: 'POST',
-            headers
+        const response = await fetch(`https://counpaign.com/api/firms/${businessId}/qr`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'QR oluşturulamadı');
+        if (response.status === 404) {
+            noQR.value = true;
+            return;
         }
 
-        token.value = data.token;
-        qrTokenId.value = ''; // Reset on new QR
+        if (!response.ok) throw new Error('QR alınamadı');
 
-        // Generate QR code image from token
-        qrDataUrl.value = await QRCode.toDataURL(data.token, {
+        const data = await response.json();
+        staticQRToken.value = data.staticQR;
+        companyName.value = data.companyName;
+
+        // Generate QR code image from static token
+        qrDataUrl.value = await QRCode.toDataURL(data.staticQR, {
             width: 400,
             margin: 2,
             color: {
@@ -53,77 +64,78 @@ const generateQR = async () => {
             }
         });
 
-        startStatusPolling();
-        toast.add({ severity: 'success', summary: 'Başarılı', detail: 'QR kod oluşturuldu', life: 2000 });
+        // Start polling for scans
+        startStaticPolling();
     } catch (error: any) {
-        console.error('QR generation error:', error);
-        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+        console.error('Fetch static QR error:', error);
+        if (!noQR.value) {
+            toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+        }
     } finally {
-        generating.value = false;
+        loading.value = false;
     }
 };
 
-const startStatusPolling = () => {
-    stopStatusPolling();
+// Generate QR for firms that don't have one yet
+const generateStaticQR = async () => {
+    generatingQR.value = true;
+    try {
+        const businessId = authStore.user?.businessId;
+        const response = await fetch(`https://counpaign.com/api/firms/${businessId}/generate-qr`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'QR oluşturulamadı');
+        }
+
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: 'QR kod oluşturuldu!', life: 2000 });
+        await fetchStaticQR();
+    } catch (error: any) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+    } finally {
+        generatingQR.value = false;
+    }
+};
+
+// Poll for scans of the static QR
+const startStaticPolling = () => {
+    stopPolling();
     statusPollingInterval = window.setInterval(async () => {
-        if (!token.value || showSelectionDialog.value) return;
+        if (showSelectionDialog.value || showGiftDialog.value) return; // Don't poll while dialog is open
 
         try {
-            const authToken = localStorage.getItem('token');
-            const headers: any = {};
-            if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
-            }
-
-            const response = await fetch(`https://counpaign.com/api/qr/status/${token.value}`, { headers });
+            const response = await fetch('https://counpaign.com/api/qr/poll-static', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await response.json();
-            
-            console.log('🔍 QR Poll Status:', data.status, data);
 
             if (data.status === 'scanned') {
-                console.log('✅ QR Scanned detected manually!');
                 customer.value = data.customer;
-                participations.value = data.participations;
                 qrTokenId.value = data.qrTokenId;
-                stopStatusPolling();
-                showSelectionDialog.value = true;
+
+                // Check scan type: Gift Redemption vs Campaign
+                if (data.scanType === 'gift_redemption') {
+                    giftRedemption.value = data.giftRedemption;
+                    showGiftDialog.value = true;
+                } else {
+                    participations.value = data.participations;
+                    showSelectionDialog.value = true;
+                }
             }
         } catch (error) {
-            console.error('❌ Status polling error:', error);
+            console.error('Static QR polling error:', error);
         }
     }, 2000);
 };
 
-const checkManualStatus = async () => {
-    if (!token.value) return;
-    try {
-        const authToken = localStorage.getItem('token');
-        const headers: any = {};
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-        }
-
-        const response = await fetch(`https://counpaign.com/api/qr/status/${token.value}`, { headers });
-        const data = await response.json();
-        
-        console.log('🔍 Manual Status Check:', data);
-
-        if (data.status === 'scanned') {
-            customer.value = data.customer;
-            participations.value = data.participations;
-            qrTokenId.value = data.qrTokenId;
-            stopStatusPolling();
-            showSelectionDialog.value = true;
-            toast.add({ severity: 'info', summary: 'Bilgi', detail: 'Müşteri taraması algılandı!', life: 2000 });
-        } else {
-            toast.add({ severity: 'info', summary: 'Bilgi', detail: `Mevcut durum: ${data.status}`, life: 2000 });
-        }
-    } catch (error: any) {
-        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
-    }
-};
-
-const stopStatusPolling = () => {
+const stopPolling = () => {
     if (statusPollingInterval) {
         clearInterval(statusPollingInterval);
         statusPollingInterval = null;
@@ -137,26 +149,20 @@ const confirmParticipation = async () => {
     }
 
     confirming.value = true;
-    
+
     if (!qrTokenId.value) {
-        console.error('❌ Missing QR Token ID');
-        toast.add({ severity: 'error', summary: 'Hata', detail: 'QR Token ID bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Hata', detail: 'QR Token ID bulunamadı.', life: 3000 });
         confirming.value = false;
         return;
     }
 
-    console.log('🚀 Confirming participation with QR ID:', qrTokenId.value);
-
     try {
-        const authToken = localStorage.getItem('token');
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-        }
-
         const response = await fetch('https://counpaign.com/api/qr/confirm', {
             method: 'POST',
-            headers,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
             body: JSON.stringify({
                 qrTokenId: qrTokenId.value,
                 customerId: customer.value._id,
@@ -171,9 +177,9 @@ const confirmParticipation = async () => {
         }
 
         toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Kampanya katılımı onaylandı', life: 3000 });
-        qrTokenId.value = ''; // Clear ID so cancel isn't triggered
+        qrTokenId.value = '';
+        selectedParticipation.value = null;
         showSelectionDialog.value = false;
-        qrDataUrl.value = ''; // Success, clear QR
     } catch (error: any) {
         console.error('Confirmation error:', error);
         toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
@@ -182,116 +188,230 @@ const confirmParticipation = async () => {
     }
 };
 
-const cancelProcess = async () => {
-    if (!qrTokenId.value) return; // Already confirmed or invalid
+const confirmGiftRedemption = async () => {
+    confirming.value = true;
+
+    if (!qrTokenId.value) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: 'QR Token ID bulunamadı.', life: 3000 });
+        confirming.value = false;
+        return;
+    }
 
     try {
-        console.log('🚫 Cancelling QR process:', qrTokenId.value);
-        const authToken = localStorage.getItem('token');
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
+        const response = await fetch('https://counpaign.com/api/gifts/complete-redemption', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                qrTokenId: qrTokenId.value
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Onaylama başarısız');
         }
 
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Hediye teslim edildi!', life: 3000 });
+        qrTokenId.value = '';
+        giftRedemption.value = null;
+        showGiftDialog.value = false;
+    } catch (error: any) {
+        console.error('Gift Confirmation error:', error);
+        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+    } finally {
+        confirming.value = false;
+    }
+};
+
+const cancelProcess = async () => {
+    if (!qrTokenId.value) return;
+
+    try {
         await fetch('https://counpaign.com/api/qr/cancel', {
             method: 'POST',
-            headers,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
             body: JSON.stringify({ qrTokenId: qrTokenId.value })
         });
-        
-        // toast.add({ severity: 'info', summary: 'İptal', detail: 'İşlem iptal edildi', life: 2000 });
     } catch (error) {
         console.error('Cancel error:', error);
     } finally {
-        qrTokenId.value = ''; // Prevent double cancel
+        qrTokenId.value = '';
     }
 };
 
 const onDialogHide = () => {
-    // If dialog is closed and we still have a token ID, it means it wasn't confirmed.
     if (qrTokenId.value) {
         cancelProcess();
     }
 };
 
-const startAutoRefresh = () => {
-    // Auto-refresh every 60 seconds
-    refreshInterval = window.setInterval(() => {
-        if (qrDataUrl.value && !showSelectionDialog.value) {
-            generateQR();
-        }
-    }, 60000);
-};
-
-const stopAutoRefresh = () => {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-    }
-    stopStatusPolling();
-};
-
 onMounted(() => {
-    startAutoRefresh();
+    fetchStaticQR();
 });
 
 onUnmounted(() => {
-    stopAutoRefresh();
+    stopPolling();
 });
+
+const downloadQRAsPDF = async () => {
+    if (!qrDataUrl.value || !companyName.value) return;
+
+    try {
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const centerX = pageWidth / 2;
+
+        // Background
+        doc.setFillColor(250, 250, 250);
+        doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+        // Top accent bar
+        doc.setFillColor(238, 44, 44);
+        doc.rect(0, 0, pageWidth, 8, 'F');
+
+        // Company Name
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(28);
+        doc.setTextColor(30, 30, 30);
+        doc.text(companyName.value, centerX, 40, { align: 'center' });
+
+        // Subtitle
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(120, 120, 120);
+        doc.text('QR Kodu Taratarak Puan Kazanin!', centerX, 52, { align: 'center' });
+
+        // Divider line
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.5);
+        doc.line(40, 60, pageWidth - 40, 60);
+
+        // QR Code - large and centered
+        const qrSize = 120;
+        const qrX = (pageWidth - qrSize) / 2;
+        const qrY = 72;
+
+        // QR border/shadow
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 4, 4, 'F');
+        doc.setDrawColor(230, 230, 230);
+        doc.roundedRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 4, 4, 'S');
+
+        // QR image
+        doc.addImage(qrDataUrl.value, 'PNG', qrX, qrY, qrSize, qrSize);
+
+        // Instructions
+        const instructionY = qrY + qrSize + 30;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Scan & Earn Points', centerX, instructionY, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        const steps = [
+            '1. Open the Counpaign app',
+            '2. Tap the QR Scan button',
+            '3. Scan this QR code',
+            '4. Your points will be added after confirmation'
+        ];
+        steps.forEach((step, i) => {
+            doc.text(step, centerX, instructionY + 12 + (i * 8), { align: 'center' });
+        });
+
+        // Bottom branding
+        doc.setFillColor(238, 44, 44);
+        doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('COUNPAIGN', centerX, pageHeight - 8, { align: 'center' });
+
+        // Save
+        doc.save(`${companyName.value}_QR_Kod.pdf`);
+
+        toast.add({ severity: 'success', summary: 'Basarili', detail: 'QR kod PDF olarak indirildi', life: 2000 });
+    } catch (error: any) {
+        console.error('PDF generation error:', error);
+        toast.add({ severity: 'error', summary: 'Hata', detail: 'PDF olu\u015fturulamad\u0131', life: 3000 });
+    }
+};
 </script>
 
 <template>
     <div class="qr-view">
         <Toast />
-        
+
         <div class="page-header mb-5">
             <h1 class="text-900 font-bold">QR Okutma</h1>
-            <p class="text-secondary">Müşteri QR kodunu okutması için kod oluşturun</p>
+            <p class="text-secondary">Müşterilerinizin bu QR kodu taratması yeterli</p>
         </div>
 
         <div class="grid justify-content-center">
             <div class="col-12 md:col-8 lg:col-6">
                 <div class="qr-card">
-                    <div v-if="!qrDataUrl" class="qr-empty-state">
+                    <!-- Loading State -->
+                    <div v-if="loading" class="qr-empty-state">
+                        <i class="pi pi-spin pi-spinner" style="font-size: 3rem; color: var(--primary-color);"></i>
+                        <p class="text-secondary">QR kod yükleniyor...</p>
+                    </div>
+
+                    <!-- No QR State (for old firms without static QR) -->
+                    <div v-else-if="noQR" class="qr-empty-state">
                         <i class="pi pi-qrcode qr-icon"></i>
                         <h3>QR Kod Oluşturun</h3>
                         <p class="text-secondary mb-4">
-                            Müşterinizin mobil uygulamadan taratması için bir QR kod oluşturun. 
-                            Kod 60 saniyede bir otomatik yenilenir.
+                            Firmanız için henüz kalıcı bir QR kod oluşturulmamış.
+                            Bir kez oluşturulduğunda, müşterileriniz her zaman bu QR kodu kullanabilir.
                         </p>
-                        <Button 
-                            label="QR Kod Oluştur" 
-                            icon="pi pi-qrcode" 
-                            @click="generateQR"
-                            :loading="generating"
+                        <Button
+                            label="Firma QR Oluştur"
+                            icon="pi pi-qrcode"
+                            @click="generateStaticQR"
+                            :loading="generatingQR"
                             size="large"
                             class="generate-btn"
                         />
                     </div>
 
+                    <!-- QR Display -->
                     <div v-else class="qr-display">
+                        <div class="firm-badge mb-3">
+                            <i class="pi pi-building mr-2"></i>
+                            <span class="font-bold">{{ companyName }}</span>
+                        </div>
                         <div class="qr-image-container">
-                            <img :src="qrDataUrl" alt="QR Code" class="qr-image" />
+                            <img :src="qrDataUrl" alt="Firma QR Kodu" class="qr-image" />
                         </div>
                         <div class="qr-info">
-                            <i class="pi pi-info-circle mr-2"></i>
-                            <span>QR kod 60 saniyede bir otomatik yenilenir</span>
+                            <i class="pi pi-lock mr-2"></i>
+                            <span>Bu QR kod firmanıza özeldir ve kalıcıdır</span>
                         </div>
-                        <Button 
-                            label="Yeni QR Oluştur" 
-                            icon="pi pi-refresh" 
-                            @click="generateQR"
-                            :loading="generating"
-                            outlined
-                            class="mt-3 w-full"
-                        />
-                        <Button 
-                            label="Taramayı Elle Kontrol Et" 
-                            icon="pi pi-search" 
-                            @click="checkManualStatus"
-                            outlined
+                        <div class="polling-indicator mt-3">
+                            <div class="pulse-dot"></div>
+                            <span>Tarama bekleniyor...</span>
+                        </div>
+                        <Button
+                            label="QR Kodu İndir (PDF)"
+                            icon="pi pi-download"
                             severity="secondary"
-                            class="mt-2 w-full"
+                            outlined
+                            class="mt-4 download-btn"
+                            @click="downloadQRAsPDF"
                         />
                     </div>
                 </div>
@@ -299,12 +419,11 @@ onUnmounted(() => {
                 <div class="instructions-card mt-4">
                     <h4 class="mb-3">📱 Nasıl Kullanılır?</h4>
                     <ol class="instruction-list">
-                        <li>Müşterinize mobil uygulamayı açmasını söyleyin</li>
-                        <li>QR kod tarama özelliğini kullansın</li>
-                        <li>Bu ekrandaki QR kodu taratsın</li>
-                        <li>Kampanya seçim ekranı görünecek</li>
+                        <li>Bu QR kodu yazdırın veya ekranda gösterin</li>
+                        <li>Müşteriniz mobil uygulamadan QR kodu taratsın</li>
+                        <li>Tarama algılandığında kampanya seçim ekranı açılır</li>
                         <li>Kampanyayı seçip onaylayın</li>
-                        <li>Otomatik olarak damga/hediye güncellenecek</li>
+                        <li>Damga/puan otomatik güncellenir</li>
                     </ol>
                 </div>
             </div>
@@ -325,11 +444,11 @@ onUnmounted(() => {
 
                 <div class="mb-4">
                     <label class="block font-bold mb-2">Kampanya Seçin</label>
-                    <Dropdown 
-                        v-model="selectedParticipation" 
-                        :options="participations" 
-                        optionLabel="campaign.title" 
-                        placeholder="Kampanya Seçin" 
+                    <Dropdown
+                        v-model="selectedParticipation"
+                        :options="participations"
+                        optionLabel="campaign.title"
+                        placeholder="Kampanya Seçin"
                         class="w-full"
                     >
                         <template #option="slotProps">
@@ -351,6 +470,41 @@ onUnmounted(() => {
             <template #footer>
                 <Button label="İptal" icon="pi pi-times" text @click="showSelectionDialog = false" :disabled="confirming" />
                 <Button label="Katılımı Onayla" icon="pi pi-check" @click="confirmParticipation" :loading="confirming" />
+            </template>
+        </Dialog>
+
+        <!-- Gift Redemption Dialog -->
+        <Dialog v-model:visible="showGiftDialog" header="Hediye Teslim Onayı" :style="{ width: '500px' }" modal @hide="onDialogHide">
+            <div class="p-4 pt-0 text-center">
+                <div v-if="customer" class="mb-4">
+                    <i class="pi pi-user text-4xl text-primary mb-2"></i>
+                    <h2 class="text-xl font-bold m-0">{{ customer.name }} {{ customer.surname }}</h2>
+                    <p class="text-secondary m-0">{{ customer.email }}</p>
+                </div>
+
+                <div class="surface-card border-1 surface-border border-round-xl p-4 shadow-1 mb-4">
+                    <p class="text-500 font-medium mb-2 uppercase text-xs tracking-widest">TESLİM EDİLECEK ÜRÜN</p>
+                    <p class="text-900 font-bold text-2xl m-0 mb-3 text-primary">{{ giftRedemption?.title }}</p>
+                    
+                    <div v-if="giftRedemption?.type === 'GIFT_ENTITLEMENT'" 
+                         class="inline-flex align-items-center px-3 py-1 border-round-2xl text-sm font-bold bg-purple-100 text-purple-700">
+                        <i class="pi pi-gift mr-2"></i>
+                        Hediye Hakkı Kullanımı
+                    </div>
+                    <div v-else 
+                         class="inline-flex align-items-center px-3 py-1 border-round-2xl text-sm font-bold bg-orange-100 text-orange-700">
+                        <i class="pi pi-star-fill mr-2"></i>
+                        -{{ giftRedemption?.pointCost }} Puan
+                    </div>
+                </div>
+
+                <p class="text-600 line-height-3 m-0">
+                    Bu işlemi onayladığınızda müşteriden ilgili tutar/hak düşülecek ve işlem tamamlanacaktır.
+                </p>
+            </div>
+            <template #footer>
+                <Button label="Reddet" icon="pi pi-times" severity="danger" text @click="showGiftDialog = false" :disabled="confirming" />
+                <Button label="Teslim Et ve Onayla" icon="pi pi-check-circle" severity="success" @click="confirmGiftRedemption" :loading="confirming" />
             </template>
         </Dialog>
     </div>
@@ -419,6 +573,16 @@ onUnmounted(() => {
     align-items: center;
 }
 
+.firm-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1.25rem;
+    background: var(--primary-color);
+    color: var(--primary-color-text);
+    border-radius: 20px;
+    font-size: 0.95rem;
+}
+
 .qr-image-container {
     background: white;
     padding: 2rem;
@@ -441,6 +605,28 @@ onUnmounted(() => {
     border-radius: 8px;
     color: var(--text-color-secondary);
     font-size: 0.9rem;
+}
+
+.polling-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-color-secondary);
+    font-size: 0.85rem;
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--green-500);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
 .instructions-card {

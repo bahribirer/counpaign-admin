@@ -177,6 +177,26 @@
                 <Message v-if="success" severity="success" :closable="false">{{ success }}</Message>
             </form>
         </div>
+
+        <!-- QR Success Dialog -->
+        <Dialog v-model:visible="showQRDialog" :header="'Firma QR Kodu Oluşturuldu'" :style="{ width: '450px' }" modal :closable="false">
+            <div class="flex flex-column align-items-center p-3">
+                <div class="mb-3">
+                    <i class="pi pi-check-circle text-green-500" style="font-size: 3rem;"></i>
+                </div>
+                <p class="font-bold text-lg mb-3">{{ createdFirmName }} başarıyla oluşturuldu!</p>
+                <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <img :src="qrDataUrl" alt="Firma QR Kodu" style="max-width: 100%; display: block;" />
+                </div>
+                <div class="mt-3 p-2 border-round flex align-items-center gap-2" style="background: var(--highlight-bg);">
+                    <i class="pi pi-info-circle"></i>
+                    <span class="text-sm" style="color: var(--text-color-secondary);">Bu QR kodu yazdırıp kasaya yerleştirin</span>
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Firmalar Sayfasına Git" icon="pi pi-arrow-right" @click="router.push('/manage-firms')" class="w-full" />
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -189,6 +209,8 @@ import Password from 'primevue/password';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
+import Dialog from 'primevue/dialog';
+import QRCode from 'qrcode';
 import { getDistrictNames, getNeighborhoods } from '../data/locations';
 
 const router = useRouter();
@@ -215,7 +237,9 @@ const neighborhoods = ref<string[]>([]);
 const loading = ref(false);
 const error = ref('');
 const success = ref('');
-
+const showQRDialog = ref(false);
+const qrDataUrl = ref('');
+const createdFirmName = ref('');
 const handleFileChange = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
@@ -322,6 +346,17 @@ const handleSubmit = async () => {
         }
 
         success.value = `${formData.value.name} başarıyla oluşturuldu!`;
+        createdFirmName.value = formData.value.name;
+
+        // Generate QR code image from response
+        if (data.staticQR) {
+            qrDataUrl.value = await QRCode.toDataURL(data.staticQR, {
+                width: 400,
+                margin: 2,
+                color: { dark: '#000000', light: '#FFFFFF' }
+            });
+            showQRDialog.value = true;
+        }
         
         // Reset form
         formData.value = {
@@ -340,11 +375,6 @@ const handleSubmit = async () => {
             }
         };
         neighborhoods.value = [];
-
-        // Redirect after 2 seconds
-        setTimeout(() => {
-            router.push('/dashboard');
-        }, 2000);
     } catch (err: any) {
         error.value = err.message || 'Bir hata oluştu';
     } finally {

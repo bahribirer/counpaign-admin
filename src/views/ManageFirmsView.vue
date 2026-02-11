@@ -17,6 +17,7 @@ interface Firm {
     city: string;
     district: string;
     neighborhood: string;
+    staticQR: string | null;
     createdAt: string;
 }
 
@@ -33,6 +34,59 @@ const notificationDialog = ref(false);
 const notificationMessage = ref('');
 const sendingNotification = ref(false);
 import Textarea from 'primevue/textarea';
+import QRCode from 'qrcode';
+
+// QR State
+const qrDialog = ref(false);
+const qrDataUrl = ref('');
+const qrFirmName = ref('');
+const generatingQR = ref<string | null>(null);
+
+const showQR = async (firm: Firm) => {
+    if (!firm.staticQR) return;
+    try {
+        qrFirmName.value = firm.companyName;
+        qrDataUrl.value = await QRCode.toDataURL(firm.staticQR, {
+            width: 400,
+            margin: 2,
+            color: { dark: '#000000', light: '#FFFFFF' }
+        });
+        qrDialog.value = true;
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: 'QR oluşturulamadı', life: 3000 });
+    }
+};
+
+const generateQR = async (firm: Firm) => {
+    generatingQR.value = firm._id;
+    try {
+        const response = await fetch(`https://counpaign.com/api/firms/${firm._id}/generate-qr`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error || 'QR oluşturulamadı');
+
+        // Update local data
+        const idx = firms.value.findIndex(f => f._id === firm._id);
+        if (idx !== -1) firms.value[idx].staticQR = data.staticQR;
+
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: `${firm.companyName} için QR oluşturuldu`, life: 3000 });
+
+        // Show the generated QR
+        qrFirmName.value = firm.companyName;
+        qrDataUrl.value = await QRCode.toDataURL(data.staticQR, {
+            width: 400,
+            margin: 2,
+            color: { dark: '#000000', light: '#FFFFFF' }
+        });
+        qrDialog.value = true;
+    } catch (error: any) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+    } finally {
+        generatingQR.value = null;
+    }
+};
 
 const fetchFirms = async () => {
     loading.value = true;
@@ -218,10 +272,33 @@ onMounted(() => {
                     </template>
                 </Column>
 
+                <Column header="QR" style="min-width: 120px">
+                    <template #body="{ data }">
+                        <Button 
+                            v-if="data.staticQR"
+                            icon="pi pi-qrcode" 
+                            severity="success" 
+                            text 
+                            rounded 
+                            @click="showQR(data)"
+                            v-tooltip.top="'QR Göster'"
+                        />
+                        <Button 
+                            v-else
+                            icon="pi pi-plus-circle" 
+                            severity="warning" 
+                            text 
+                            rounded 
+                            @click="generateQR(data)"
+                            :loading="generatingQR === data._id"
+                            v-tooltip.top="'QR Oluştur'"
+                        />
+                    </template>
+                </Column>
+
                 <Column header="İşlemler" style="min-width: 100px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                             <!-- Replaced individual button with bulk action -->
                             <Button 
                                 icon="pi pi-trash" 
                                 severity="danger" 
@@ -286,6 +363,19 @@ onMounted(() => {
                 <Button label="İptal" icon="pi pi-times" text @click="notificationDialog = false" :disabled="sendingNotification" />
                 <Button label="Gönder" icon="pi pi-send" severity="warning" @click="sendBulkNotification" :loading="sendingNotification" />
             </template>
+        </Dialog>
+
+        <!-- QR Display Dialog -->
+        <Dialog v-model:visible="qrDialog" :header="qrFirmName + ' QR Kodu'" :style="{ width: '450px' }" modal>
+            <div class="flex flex-column align-items-center p-3">
+                <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <img :src="qrDataUrl" alt="QR Code" style="max-width: 100%; display: block;" />
+                </div>
+                <div class="mt-3 p-2 border-round flex align-items-center gap-2" style="background: var(--highlight-bg);">
+                    <i class="pi pi-lock"></i>
+                    <span class="text-sm" style="color: var(--text-color-secondary);">Bu QR kod kalıcıdır ve firmaya özeldir</span>
+                </div>
+            </div>
         </Dialog>
     </div>
 </template>

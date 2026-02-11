@@ -7,12 +7,6 @@
       </div>
       <div class="flex gap-2">
         <Button 
-          label="Hediye Teslim Et" 
-          icon="pi pi-qrcode" 
-          severity="success"
-          @click="showRedeemModal = true" 
-        />
-        <Button 
           label="Yeni Hediye Ekle" 
           icon="pi pi-plus" 
           @click="showAddModal = true" 
@@ -85,7 +79,6 @@
       </div>
     </div>
 
-    <!-- Add/Edit Gift Dialog -->
     <Dialog 
       v-model:visible="showAddModal" 
       modal 
@@ -117,94 +110,6 @@
 
     <Toast />
     <ConfirmDialog />
-
-    <!-- Redeem Gift Dialog (2-Step) -->
-    <Dialog 
-      v-model:visible="showRedeemModal" 
-      modal 
-      header="Hediye Teslim Et" 
-      :style="{ width: '600px' }"
-      class="p-fluid"
-      @hide="resetRedeemState"
-    >
-      <!-- Step 1: Input Code -->
-      <div v-if="!redemptionDetails" class="flex flex-column align-items-center mb-4 pt-4">
-        <i class="pi pi-qrcode text-6xl text-primary mb-4 opacity-70"></i>
-        <p class="text-center text-700 text-xl font-medium m-0">Müşterinin uygulamasındaki kodu giriniz.</p>
-        
-        <div class="field mt-5 w-full flex justify-content-center">
-          <InputText 
-            id="redeemCode" 
-            v-model="redeemCode" 
-            placeholder="KODU GİRİN" 
-            class="text-center text-4xl font-bold uppercase p-inputtext-lg w-8"
-            maxlength="6"
-            autofocus
-            @keyup.enter="verifyRedemption"
-          />
-        </div>
-      </div>
-
-      <!-- Step 2: Confirmation Preview -->
-      <div v-else-if="!redemptionSuccess" class="flex flex-column align-items-center mb-4 text-center pt-2">
-        <div class="border-circle w-6rem h-6rem flex align-items-center justify-content-center mb-4 shadow-2" style="background: var(--green-500); color: white;">
-          <i class="pi pi-check text-4xl"></i>
-        </div>
-        
-        <h3 class="text-900 font-bold text-3xl mb-2">{{ redemptionDetails.customerName }}</h3>
-        <span class="text-500 font-medium text-lg mb-5 block">{{ redemptionDetails.customerEmail }}</span>
-
-        <div class="surface-card border-1 surface-border border-round-xl p-5 w-full shadow-2 mt-2">
-          <p class="text-500 font-medium mb-3 uppercase text-sm tracking-widest">TESLİM EDİLECEK ÜRÜN</p>
-          <p class="text-primary font-bold text-4xl m-0 mb-4 line-height-2">{{ redemptionDetails.giftTitle }}</p>
-          
-          <!-- Dynamic Badge based on Type -->
-          <div v-if="redemptionDetails.redemptionType === 'GIFT_ENTITLEMENT'" 
-               class="inline-flex align-items-center px-4 py-2 border-round-2xl text-base font-bold"
-               style="background: rgba(156, 39, 176, 0.1); color: #AB47BC; border: 1px solid rgba(156, 39, 176, 0.2);">
-            <i class="pi pi-gift mr-2 text-xl"></i>
-            Hediye Hakkı Kullanımı
-          </div>
-          <div v-else class="inline-flex align-items-center px-4 py-2 border-round-2xl text-base font-bold"
-               style="background: rgba(255, 152, 0, 0.1); color: #FFA726; border: 1px solid rgba(255, 152, 0, 0.2);">
-            <i class="pi pi-star-fill mr-2 text-xl"></i>
-            -{{ redemptionDetails.pointCost }} Puan
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Success -->
-      <div v-else class="flex flex-column align-items-center mb-4 text-center">
-        <div class="bg-green-500 border-circle w-6rem h-6rem flex align-items-center justify-content-center mb-4 fadein animation-duration-500">
-          <i class="pi pi-check text-white text-5xl"></i>
-        </div>
-        <h3 class="text-green-600 font-bold text-2xl mb-2">Başarılı!</h3>
-        <p class="text-600 text-lg">Hediye teslim edildi.</p>
-      </div>
-
-      <template #footer>
-        <div v-if="!redemptionDetails">
-          <Button label="İptal" text plain @click="showRedeemModal = false" />
-          <Button 
-            label="Sorgula" 
-            icon="pi pi-search" 
-            @click="verifyRedemption" 
-            :loading="verifying" 
-            :disabled="!redeemCode || redeemCode.length < 6"
-          />
-        </div>
-        <div v-else-if="!redemptionSuccess">
-          <Button label="Vazgeç" text plain @click="resetRedeemState" />
-          <Button 
-            label="Onayla ve Teslim Et" 
-            icon="pi pi-check-circle" 
-            severity="success"
-            @click="completeRedemption" 
-            :loading="redeeming"
-          />
-        </div>
-      </template>
-    </Dialog>
   </div>
 </template>
 
@@ -263,14 +168,6 @@ export default defineComponent({
       editingId: null as string | null, // Track editing state
       newGift: { title: '', pointCost: null },
       submitting: false,
-
-      // Redeem State
-      showRedeemModal: false,
-      redeemCode: '',
-      verifying: false,
-      redeeming: false,
-      redemptionDetails: null as any,
-      redemptionSuccess: false,
     };
   },
   async created() {
@@ -336,52 +233,6 @@ export default defineComponent({
        this.saveGift();
     },
 
-    async verifyRedemption() {
-      if (!this.redeemCode || this.redeemCode.length < 6) return;
-      try {
-        this.verifying = true; 
-        const res = await api.post('/gifts/verify-redemption', { token: this.redeemCode.toUpperCase() });
-        this.redemptionDetails = res.data;
-      } catch (error: any) {
-         console.error('Verify error:', error);
-         const msg = error.message === 'Failed to fetch' ? 'Sunucuya ulaşılamadı' : (error.message || 'Eski veya süresi geçmiş kod');
-         this.toast.add({ severity: 'error', summary: 'Hata', detail: msg, life: 3000 });
-         this.redemptionDetails = null;
-      } finally {
-        this.verifying = false;
-      }
-    },
-
-    async completeRedemption() {
-      if (!this.redeemCode) return;
-      try {
-        this.redeeming = true;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        await api.post('/gifts/complete-redemption', { token: this.redeemCode.toUpperCase() });
-        
-        // Show Success Step instead of Alert
-        this.redemptionSuccess = true;
-        this.toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Hediye teslim edildi', life: 3000 });
-
-        // Auto-close after 2 seconds
-        setTimeout(() => {
-            this.showRedeemModal = false;
-        }, 2000);
-      } catch (error: any) {
-        this.toast.add({ severity: 'error', summary: 'Hata', detail: error.message || 'Teslim edilemedi.', life: 3000 });
-      } finally {
-        this.redeeming = false;
-      }
-    },
-
-    resetRedeemState() {
-      this.redeemCode = '';
-      this.redemptionDetails = null;
-      this.redemptionSuccess = false;
-      this.verifying = false;
-      this.redeeming = false;
-    },
-    
     async deleteGift(id: string) {
       this.confirm.require({
         message: 'Bu hediyeyi silmek istediğinize emin misiniz?',

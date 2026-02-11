@@ -133,6 +133,11 @@ const items = computed(() => {
                     command: () => router.push('/qr')
                 },
                 {
+                    label: 'Menü Yönetimi',
+                    icon: 'pi pi-book',
+                    command: () => router.push('/menu')
+                },
+                {
                     label: 'Hediyeler',
                     icon: 'pi pi-gift',
                     command: () => router.push('/gifts')
