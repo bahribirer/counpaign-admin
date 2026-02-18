@@ -386,7 +386,7 @@ const deleteCampaign = async () => {
 
 const formatDate = (date: Date) => date.toLocaleDateString('tr-TR');
 
-const formatPrice = (val: number) => `₺${val.toFixed(0)}`;
+
 
 onMounted(async () => {
     const resolved = await resolveBusinessId();

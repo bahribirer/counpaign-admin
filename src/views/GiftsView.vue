@@ -169,7 +169,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent } from 'vue';
 import { useAuthStore } from '../stores/auth.store'; 
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
