@@ -135,7 +135,7 @@
 
                     <div class="form-group">
                         <label for="district">İlçe *</label>
-                        <Dropdown 
+                        <Select 
                             id="district" 
                             v-model="formData.settings.district" 
                             :options="districts"
@@ -147,7 +147,7 @@
 
                     <div class="form-group">
                         <label for="neighborhood">Semt *</label>
-                        <Dropdown 
+                        <Select 
                             id="neighborhood" 
                             v-model="formData.settings.neighborhood" 
                             :options="neighborhoods"
@@ -206,7 +206,7 @@ import { useRouter } from 'vue-router';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Password from 'primevue/password';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Dialog from 'primevue/dialog';

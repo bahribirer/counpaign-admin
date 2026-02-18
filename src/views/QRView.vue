@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
+import InputNumber from 'primevue/inputnumber';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
 import { useAuthStore } from '../stores/auth.store';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -15,17 +17,23 @@ const qrDataUrl = ref('');
 const loading = ref(true);
 const staticQRToken = ref('');
 const companyName = ref('');
-const showSelectionDialog = ref(false);
+const showEntryDialog = ref(false);
 const showGiftDialog = ref(false);
 const customer = ref<any>(null);
-const participations = ref<any[]>([]);
+const customerBusiness = ref<any>(null);
 const giftRedemption = ref<any>(null);
-const selectedParticipation = ref<any>(null);
+const stampCount = ref<number>(1);
+const purchaseAmount = ref<number>(0);
 const confirming = ref(false);
 const qrTokenId = ref('');
 const noQR = ref(false);
 const generatingQR = ref(false);
 let statusPollingInterval: number | null = null;
+
+// Computed: points to be earned from purchase
+const calculatedPoints = computed(() => {
+    return Math.floor((purchaseAmount.value || 0) * 0.10);
+});
 
 // Fetch the firm's permanent static QR
 const fetchStaticQR = async () => {
@@ -37,7 +45,7 @@ const fetchStaticQR = async () => {
             throw new Error('Business ID bulunamadı');
         }
 
-        const response = await fetch(`https://counpaign.com/api/firms/${businessId}/qr`, {
+        const response = await fetch(`${API_URL}/firms/${businessId}/qr`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -81,7 +89,7 @@ const generateStaticQR = async () => {
     generatingQR.value = true;
     try {
         const businessId = authStore.user?.businessId;
-        const response = await fetch(`https://counpaign.com/api/firms/${businessId}/generate-qr`, {
+        const response = await fetch(`${API_URL}/firms/${businessId}/generate-qr`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -106,10 +114,10 @@ const generateStaticQR = async () => {
 const startStaticPolling = () => {
     stopPolling();
     statusPollingInterval = window.setInterval(async () => {
-        if (showSelectionDialog.value || showGiftDialog.value) return; // Don't poll while dialog is open
+        if (showEntryDialog.value || showGiftDialog.value) return;
 
         try {
-            const response = await fetch('https://counpaign.com/api/qr/poll-static', {
+            const response = await fetch(`${API_URL}/qr/poll-static`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -120,13 +128,18 @@ const startStaticPolling = () => {
                 customer.value = data.customer;
                 qrTokenId.value = data.qrTokenId;
 
-                // Check scan type: Gift Redemption vs Campaign
+                // Check scan type: Gift Redemption vs Normal
                 if (data.scanType === 'gift_redemption') {
                     giftRedemption.value = data.giftRedemption;
                     showGiftDialog.value = true;
                 } else {
-                    participations.value = data.participations;
-                    showSelectionDialog.value = true;
+                    // Normal scan — show stamp/point entry dialog
+                    customerBusiness.value = data.customerBusiness || {
+                        stamps: 0, stampsTarget: 6, giftsCount: 0, points: 0, totalVisits: 0
+                    };
+                    stampCount.value = 1;
+                    purchaseAmount.value = 0;
+                    showEntryDialog.value = true;
                 }
             }
         } catch (error) {
@@ -142,12 +155,7 @@ const stopPolling = () => {
     }
 };
 
-const confirmParticipation = async () => {
-    if (!selectedParticipation.value) {
-        toast.add({ severity: 'warn', summary: 'Uyarı', detail: 'Lütfen bir kampanya seçin', life: 2000 });
-        return;
-    }
-
+const confirmEntry = async () => {
     confirming.value = true;
 
     if (!qrTokenId.value) {
@@ -157,7 +165,7 @@ const confirmParticipation = async () => {
     }
 
     try {
-        const response = await fetch('https://counpaign.com/api/qr/confirm', {
+        const response = await fetch(`${API_URL}/qr/confirm`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -166,7 +174,8 @@ const confirmParticipation = async () => {
             body: JSON.stringify({
                 qrTokenId: qrTokenId.value,
                 customerId: customer.value._id,
-                campaignId: selectedParticipation.value.campaign._id
+                stampCount: stampCount.value,
+                purchaseAmount: purchaseAmount.value
             })
         });
 
@@ -176,10 +185,17 @@ const confirmParticipation = async () => {
             throw new Error(data.error || 'Onaylama başarısız');
         }
 
-        toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Kampanya katılımı onaylandı', life: 3000 });
+        const pts = calculatedPoints.value;
+        const stmps = stampCount.value;
+        let msg = '';
+        if (stmps > 0 && pts > 0) msg = `${stmps} damga + ${pts} puan eklendi`;
+        else if (stmps > 0) msg = `${stmps} damga eklendi`;
+        else if (pts > 0) msg = `${pts} puan eklendi`;
+        else msg = 'İşlem onaylandı';
+
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: msg, life: 3000 });
         qrTokenId.value = '';
-        selectedParticipation.value = null;
-        showSelectionDialog.value = false;
+        showEntryDialog.value = false;
     } catch (error: any) {
         console.error('Confirmation error:', error);
         toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
@@ -198,7 +214,7 @@ const confirmGiftRedemption = async () => {
     }
 
     try {
-        const response = await fetch('https://counpaign.com/api/gifts/complete-redemption', {
+        const response = await fetch(`${API_URL}/gifts/complete-redemption`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -231,7 +247,7 @@ const cancelProcess = async () => {
     if (!qrTokenId.value) return;
 
     try {
-        await fetch('https://counpaign.com/api/qr/cancel', {
+        await fetch(`${API_URL}/qr/cancel`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -347,7 +363,7 @@ const downloadQRAsPDF = async () => {
         toast.add({ severity: 'success', summary: 'Basarili', detail: 'QR kod PDF olarak indirildi', life: 2000 });
     } catch (error: any) {
         console.error('PDF generation error:', error);
-        toast.add({ severity: 'error', summary: 'Hata', detail: 'PDF olu\u015fturulamad\u0131', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Hata', detail: 'PDF oluşturulamadı', life: 3000 });
     }
 };
 </script>
@@ -362,7 +378,7 @@ const downloadQRAsPDF = async () => {
         </div>
 
         <div class="grid justify-content-center">
-            <div class="col-12 md:col-8 lg:col-6">
+            <div class="col-12 md:col-10 lg:col-8">
                 <div class="qr-card">
                     <!-- Loading State -->
                     <div v-if="loading" class="qr-empty-state">
@@ -421,17 +437,18 @@ const downloadQRAsPDF = async () => {
                     <ol class="instruction-list">
                         <li>Bu QR kodu yazdırın veya ekranda gösterin</li>
                         <li>Müşteriniz mobil uygulamadan QR kodu taratsın</li>
-                        <li>Tarama algılandığında kampanya seçim ekranı açılır</li>
-                        <li>Kampanyayı seçip onaylayın</li>
-                        <li>Damga/puan otomatik güncellenir</li>
+                        <li>Tarama algılandığında damga/puan giriş ekranı açılır</li>
+                        <li>Damga sayısı ve alışveriş tutarını girin</li>
+                        <li>Onaylayın — damga ve puan otomatik güncellenir</li>
                     </ol>
                 </div>
             </div>
         </div>
 
-        <!-- Campaign Selection Dialog -->
-        <Dialog v-model:visible="showSelectionDialog" header="Kampanya Onaylama" :style="{ width: '500px' }" modal @hide="onDialogHide">
+        <!-- Stamp/Point Entry Dialog (replaces old Campaign Selection Dialog) -->
+        <Dialog v-model:visible="showEntryDialog" header="Damga & Puan Girişi" :style="{ width: '520px' }" modal @hide="onDialogHide">
             <div class="p-4 pt-0">
+                <!-- Customer Info -->
                 <div v-if="customer" class="customer-info mb-4 p-3 surface-100 border-round">
                     <div class="flex align-items-center gap-3">
                         <i class="pi pi-user text-2xl text-primary"></i>
@@ -442,38 +459,76 @@ const downloadQRAsPDF = async () => {
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="block font-bold mb-2">Kampanya Seçin</label>
-                    <Dropdown
-                        v-model="selectedParticipation"
-                        :options="participations"
-                        optionLabel="campaign.title"
-                        placeholder="Kampanya Seçin"
-                        class="w-full"
-                    >
-                        <template #option="slotProps">
-                            <div class="flex flex-column">
-                                <div class="font-bold">{{ slotProps.option.campaign.title }}</div>
-                                <div class="text-sm text-secondary">
-                                    Mevcut: {{ slotProps.option.currentStamps }} Damga, {{ slotProps.option.currentGifts }} Hediye
-                                </div>
+                <!-- Loyalty Status Cards -->
+                <div v-if="customerBusiness" class="loyalty-cards mb-4">
+                    <div class="grid">
+                        <div class="col-4">
+                            <div class="loyalty-card stamps-card">
+                                <i class="pi pi-ticket"></i>
+                                <div class="loyalty-value">{{ customerBusiness.stamps }}/{{ customerBusiness.stampsTarget }}</div>
+                                <div class="loyalty-label">Damga</div>
                             </div>
-                        </template>
-                    </Dropdown>
+                        </div>
+                        <div class="col-4">
+                            <div class="loyalty-card gifts-card">
+                                <i class="pi pi-gift"></i>
+                                <div class="loyalty-value">{{ customerBusiness.giftsCount }}</div>
+                                <div class="loyalty-label">Hediye</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="loyalty-card points-card">
+                                <i class="pi pi-star-fill"></i>
+                                <div class="loyalty-value">{{ customerBusiness.points }}</div>
+                                <div class="loyalty-label">Puan</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="info-alert p-3 bg-blue-50 text-blue-700 border-round mb-2 flex align-items-start gap-2">
-                    <i class="pi pi-info-circle mt-1"></i>
-                    <span>Onayladığınızda müşteriye 1 damga eklenecek ve kampanya hediye koşulu kontrol edilecektir.</span>
+                <!-- Stamp Count Input -->
+                <div class="mb-3">
+                    <label class="block font-bold mb-2">🏷️ Damga Sayısı</label>
+                    <InputNumber
+                        v-model="stampCount"
+                        :min="0"
+                        :max="20"
+                        showButtons
+                        buttonLayout="horizontal"
+                        class="w-full"
+                        incrementButtonIcon="pi pi-plus"
+                        decrementButtonIcon="pi pi-minus"
+                    />
+                </div>
+
+                <!-- Purchase Amount Input -->
+                <div class="mb-3">
+                    <label class="block font-bold mb-2">💰 Alışveriş Tutarı (TL)</label>
+                    <InputNumber
+                        v-model="purchaseAmount"
+                        :min="0"
+                        mode="currency"
+                        currency="TRY"
+                        locale="tr-TR"
+                        class="w-full"
+                    />
+                </div>
+
+                <!-- Calculated Points Preview -->
+                <div class="points-preview p-3 border-round mb-2">
+                    <div class="flex align-items-center justify-content-between">
+                        <span class="font-medium">Kazanılacak Puan (10%)</span>
+                        <span class="text-xl font-bold text-primary">{{ calculatedPoints }}</span>
+                    </div>
                 </div>
             </div>
             <template #footer>
-                <Button label="İptal" icon="pi pi-times" text @click="showSelectionDialog = false" :disabled="confirming" />
-                <Button label="Katılımı Onayla" icon="pi pi-check" @click="confirmParticipation" :loading="confirming" />
+                <Button label="İptal" icon="pi pi-times" text @click="showEntryDialog = false" :disabled="confirming" />
+                <Button label="Onayla ✓" icon="pi pi-check" @click="confirmEntry" :loading="confirming" />
             </template>
         </Dialog>
 
-        <!-- Gift Redemption Dialog -->
+        <!-- Gift Redemption Dialog (unchanged) -->
         <Dialog v-model:visible="showGiftDialog" header="Hediye Teslim Onayı" :style="{ width: '500px' }" modal @hide="onDialogHide">
             <div class="p-4 pt-0 text-center">
                 <div v-if="customer" class="mb-4">
@@ -652,5 +707,50 @@ const downloadQRAsPDF = async () => {
 
 .instruction-list li {
     margin-bottom: 0.5rem;
+}
+
+/* Loyalty Cards in Dialog */
+.loyalty-card {
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    border-radius: 12px;
+    cursor: default;
+}
+
+.loyalty-card i {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.loyalty-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.loyalty-label {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    margin-top: 0.15rem;
+}
+
+.stamps-card {
+    background: #EBF5FF;
+    color: #1E6FD9;
+}
+
+.gifts-card {
+    background: #FFF0F5;
+    color: #D63384;
+}
+
+.points-card {
+    background: #FFF8E1;
+    color: #E6A919;
+}
+
+.points-preview {
+    background: var(--highlight-bg);
+    border: 1px solid var(--surface-border);
 }
 </style>

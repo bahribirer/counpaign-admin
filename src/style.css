@@ -8,129 +8,816 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Mobil App Theme Compatibility */
-  --p-datatable-header-background: #27272A;
-  --p-datatable-header-color: #ffffff;
-  --p-datatable-row-background: #18181B;
-  --p-datatable-row-color: #ffffff;
+  /* "The Stock" Coffee Palette */
+  --coffee-bg: #FDFBF7;
+  --coffee-surface: #FFFFFF;
+  --coffee-header: #FFF8E1;
+  --coffee-primary: #DAA520;
+  --coffee-text-main: #3E2723;
+  --coffee-text-sec: #795548;
+  --coffee-border: #F0EBE3;
+  --coffee-hover: #FFF3E0;
 }
 
+/* Custom Coffee Cup Cursor */
 body {
-  background-color: #09090B !important;
-  color: #FFFFFF !important;
+  background-color: var(--surface-ground, #FDFBF7) !important;
+  color: var(--text-color, #3E2723) !important;
   margin: 0;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="%235D4037" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>') 14 14, auto;
+  overflow-x: hidden;
 }
 
-/* Force PrimeVue to use Outfit everywhere, except icons */
+/* Background decoration */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(218, 165, 32, 0.04) 0%, transparent 25%),
+    radial-gradient(circle at 90% 80%, rgba(93, 64, 55, 0.03) 0%, transparent 25%);
+}
+
+/* Text Selection */
+::selection {
+  background-color: rgba(218, 165, 32, 0.2);
+  color: #3E2723;
+}
+
+/* Force Outfit font */
 .p-component,
 .p-component *:not(.pi) {
   font-family: 'Outfit', sans-serif !important;
 }
 
-h1 {
-  font-size: 2.75rem;
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  color: #FFFFFF;
-  margin-bottom: 0.5rem;
-}
-
-p.text-secondary {
-  font-size: 1rem;
-  color: #A1A1AA !important;
-  font-weight: 400;
-}
-
+/* Headings */
+h1,
+h2,
+h3,
+h4,
 h5,
-.text-xl {
-  font-weight: 800 !important;
-  color: #FFFFFF;
-}
-
-/* Stat Numbers */
-.text-900.text-xl {
-  font-size: 2.75rem !important;
-  font-weight: 900 !important;
-  color: #FFFFFF !important;
-}
-
-/* Card Titles */
-.text-500.font-medium {
-  font-size: 0.75rem;
-  font-weight: 800 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #A1A1AA !important;
+h6 {
+  color: var(--text-color, #3E2723) !important;
 }
 
 /* Inputs */
 .p-inputtext {
-  border-radius: 16px !important;
-  padding: 0.875rem 1.25rem !important;
-  background: #18181B !important;
-  border: 1px solid #27272A !important;
-  color: white !important;
+  border-radius: 12px !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--surface-border, #F0EBE3) !important;
+  color: var(--text-color, #3E2723) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .p-inputtext:focus {
-  border-color: var(--primary-color) !important;
+  border-color: var(--primary-color, #DAA520) !important;
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.12) !important;
 }
 
+/* Dropdowns */
+.p-dropdown,
+.p-multiselect {
+  background: #FFFFFF !important;
+  border: 1px solid var(--surface-border, #F0EBE3) !important;
+  border-radius: 12px !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:not(.p-highlight):not(.p-disabled):hover {
+  background: #FFF3E0 !important;
+}
+
+/* Buttons */
 button {
-  border-radius: 16px !important;
-  font-weight: 800 !important;
-  text-transform: none;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
 }
 
-/* Bento Card Style from Mobile App */
+/* Cards */
 .card {
-  background: #18181B;
-  border: 1px solid #27272A;
-  border-radius: 24px !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--surface-border, #F0EBE3) !important;
+  border-radius: 16px !important;
   padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  color: var(--text-color, #3E2723) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Data Table Overrides */
+/* ===== PREMIUM ANIMATED DATATABLE ===== */
+
+/* Table wrapper with glass effect */
 .p-datatable {
-  background: transparent !important;
+  background: #FFFFFF !important;
+  color: var(--text-color, #3E2723) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  border: 1px solid rgba(240, 235, 227, 0.6) !important;
+  box-shadow: 0 4px 24px rgba(62, 39, 35, 0.04) !important;
 }
 
+/* Gradient header */
+.p-datatable .p-datatable-header {
+  background: linear-gradient(135deg, #FFF8E1 0%, #FDFBF7 100%) !important;
+  color: var(--text-color, #3E2723) !important;
+  border-bottom: 2px solid rgba(218, 165, 32, 0.15) !important;
+  padding: 1.25rem 1.5rem !important;
+}
+
+/* Column headers with gold accent */
 .p-datatable .p-datatable-thead>tr>th {
-  background: #27272a !important;
-  color: #a1a1aa !important;
+  background: linear-gradient(180deg, #FFF8E1 0%, #FFFDF5 100%) !important;
+  color: #5D4037 !important;
   border: none !important;
-  padding: 1.25rem !important;
+  border-bottom: 2px solid rgba(218, 165, 32, 0.12) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.1em;
+  padding: 1rem 1.25rem !important;
+  transition: background 0.3s ease;
+  position: relative;
 }
 
+/* Sortable header hover */
+.p-datatable .p-datatable-thead>tr>th.p-sortable-column:hover {
+  background: linear-gradient(180deg, #FFF3E0 0%, #FFF8E1 100%) !important;
+}
+
+/* Sort icon animation */
+.p-datatable .p-sortable-column .p-sortable-column-icon {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease !important;
+  color: #BCAAA4 !important;
+}
+
+.p-datatable .p-sortable-column:hover .p-sortable-column-icon {
+  color: #DAA520 !important;
+  transform: scale(1.3) !important;
+}
+
+.p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon {
+  color: #DAA520 !important;
+}
+
+/* ===== ROW ANIMATIONS ===== */
 .p-datatable .p-datatable-tbody>tr {
-  background: transparent !important;
-  color: white !important;
-  border-bottom: 1px solid #27272a !important;
+  background: #FFFFFF !important;
+  color: var(--text-color, #3E2723) !important;
+  border-bottom: 1px solid rgba(240, 235, 227, 0.5) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  animation: rowSlideIn 0.5s ease-out both;
+  position: relative;
 }
 
+/* Staggered entrance — first 20 rows get individual delay */
+.p-datatable .p-datatable-tbody>tr:nth-child(1) {
+  animation-delay: 0.03s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(3) {
+  animation-delay: 0.09s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(4) {
+  animation-delay: 0.12s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(5) {
+  animation-delay: 0.15s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(6) {
+  animation-delay: 0.18s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(7) {
+  animation-delay: 0.21s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(8) {
+  animation-delay: 0.24s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(9) {
+  animation-delay: 0.27s;
+}
+
+.p-datatable .p-datatable-tbody>tr:nth-child(10) {
+  animation-delay: 0.30s;
+}
+
+@keyframes rowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Row hover: glow + slide-right + left gold accent */
+.p-datatable .p-datatable-tbody>tr:hover {
+  background: linear-gradient(90deg, rgba(218, 165, 32, 0.06) 0%, #FFF3E0 15%, #FFFDF5 100%) !important;
+  transform: translateX(4px) !important;
+  box-shadow: 0 4px 16px rgba(218, 165, 32, 0.08) !important;
+  z-index: 1;
+}
+
+.p-datatable .p-datatable-tbody>tr:hover>td:first-child {
+  box-shadow: inset 3px 0 0 #DAA520 !important;
+}
+
+/* Cell styling */
+.p-datatable .p-datatable-tbody>tr>td {
+  color: var(--text-color, #3E2723) !important;
+  padding: 0.875rem 1.25rem !important;
+  transition: all 0.3s ease !important;
+  font-size: 0.875rem;
+}
+
+/* Alternating row subtle tint */
+.p-datatable .p-datatable-tbody>tr:nth-child(even) {
+  background: rgba(253, 251, 247, 0.5) !important;
+}
+
+/* Paginator */
 .p-paginator {
-  background: transparent !important;
+  background: linear-gradient(180deg, #FFFDF5 0%, #FFF8E1 100%) !important;
   border: none !important;
+  border-top: 1px solid rgba(240, 235, 227, 0.5) !important;
+  padding: 0.75rem !important;
 }
 
-/* Layout Specifics */
+.p-paginator .p-paginator-current {
+  color: var(--text-color-secondary, #795548) !important;
+}
+
+.p-paginator .p-paginator-page {
+  border-radius: 10px !important;
+  transition: all 0.25s ease !important;
+  min-width: 2.25rem !important;
+  height: 2.25rem !important;
+}
+
+.p-paginator .p-paginator-page:hover {
+  background: #FFF3E0 !important;
+  transform: scale(1.1);
+}
+
+.p-paginator .p-paginator-page.p-highlight {
+  background: linear-gradient(135deg, #DAA520, #B8860B) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(218, 165, 32, 0.3) !important;
+}
+
+/* Empty state animation */
+.p-datatable .p-datatable-emptymessage td {
+  padding: 3rem !important;
+  text-align: center;
+  color: #A1887F !important;
+  font-style: italic;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Loading skeleton shimmer */
+.p-datatable-loading-overlay {
+  background: rgba(253, 251, 247, 0.8) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Column resize handle */
+.p-datatable .p-column-resizer {
+  border-right: 2px solid rgba(218, 165, 32, 0.2) !important;
+}
+
+/* Sidebar */
 .layout-sidebar {
-  background: #18181B !important;
-  border-right: 1px solid #27272A !important;
+  background: #FDFBF7 !important;
+  border-right: 1px solid var(--surface-border, #F0EBE3) !important;
 }
 
+/* Menu Items */
 :deep(.p-menuitem-link) {
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   margin: 2px 0;
+  color: var(--text-color, #3E2723) !important;
+  transition: all 0.15s ease;
+}
+
+:deep(.p-menuitem-link:hover) {
+  background: #FFF3E0 !important;
+  color: var(--text-color, #3E2723) !important;
 }
 
 :deep(.p-menuitem-link.router-link-active) {
-  background: var(--primary-color) !important;
+  background: var(--primary-color, #DAA520) !important;
   color: white !important;
+}
+
+/* Topbar */
+.layout-topbar {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--surface-border, #F0EBE3) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FDFBF7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D7CCC8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #BCAAA4;
+}
+
+/* ===== PREMIUM ANIMATED DIALOGS ===== */
+
+/* Backdrop: glassmorphism blur */
+.p-dialog-mask {
+  backdrop-filter: blur(6px) !important;
+  background: rgba(62, 39, 35, 0.25) !important;
+}
+
+/* Dialog wrapper: entrance animation */
+.p-dialog {
+  background: #FFFFFF !important;
+  color: var(--text-color, #3E2723) !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(240, 235, 227, 0.6) !important;
+  box-shadow:
+    0 25px 50px rgba(62, 39, 35, 0.12),
+    0 12px 24px rgba(62, 39, 35, 0.08),
+    0 0 0 1px rgba(218, 165, 32, 0.05) !important;
+  overflow: hidden;
+  animation: dialogEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+@keyframes dialogEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header: gradient with gold bottom accent */
+.p-dialog .p-dialog-header {
+  background: linear-gradient(180deg, #FFFDF5 0%, #FFFFFF 100%) !important;
+  color: var(--text-color, #3E2723) !important;
+  padding: 1.25rem 1.5rem !important;
+  border-bottom: 2px solid rgba(218, 165, 32, 0.12) !important;
+  position: relative;
+}
+
+.p-dialog .p-dialog-header::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 5%;
+  width: 90%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.3), transparent);
+}
+
+/* Header title */
+.p-dialog .p-dialog-title {
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.15rem !important;
+  color: #3E2723 !important;
+}
+
+/* Close button animation */
+.p-dialog .p-dialog-header-close {
+  border-radius: 10px !important;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  color: #A1887F !important;
+}
+
+.p-dialog .p-dialog-header-close:hover {
+  background: #FFF3E0 !important;
+  color: #3E2723 !important;
+  transform: rotate(90deg) scale(1.1) !important;
+}
+
+/* Content area */
+.p-dialog .p-dialog-content {
+  background: #FFFFFF !important;
+  color: var(--text-color, #3E2723) !important;
+  padding: 1.5rem !important;
+}
+
+/* Staggered form field entrance */
+.p-dialog .p-dialog-content>div,
+.p-dialog .p-dialog-content>.mb-3,
+.p-dialog .p-dialog-content>.mb-4,
+.p-dialog .p-dialog-content>.field {
+  animation: fieldSlideIn 0.4s ease-out both;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(8) {
+  animation-delay: 0.4s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(9) {
+  animation-delay: 0.45s;
+}
+
+.p-dialog .p-dialog-content>*:nth-child(10) {
+  animation-delay: 0.5s;
+}
+
+@keyframes fieldSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Input focus: gold glow ring */
+.p-dialog .p-inputtext {
+  border-radius: 12px !important;
+  border: 1.5px solid #F0EBE3 !important;
+  padding: 0.75rem 1rem !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: #FFFDF5 !important;
+  font-size: 0.9rem !important;
+}
+
+.p-dialog .p-inputtext:hover {
+  border-color: #D7CCC8 !important;
+}
+
+.p-dialog .p-inputtext:focus {
+  border-color: #DAA520 !important;
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.12), 0 2px 8px rgba(218, 165, 32, 0.08) !important;
+  background: #FFFFFF !important;
+  transform: scale(1.01);
+}
+
+/* Labels in dialogs */
+.p-dialog label {
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  color: #5D4037 !important;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.4rem !important;
+  display: inline-block;
+}
+
+/* Textarea */
+.p-dialog .p-textarea,
+.p-dialog textarea {
+  border-radius: 12px !important;
+  border: 1.5px solid #F0EBE3 !important;
+  background: #FFFDF5 !important;
+  transition: all 0.3s ease !important;
+  min-height: 80px;
+}
+
+.p-dialog .p-textarea:focus,
+.p-dialog textarea:focus {
+  border-color: #DAA520 !important;
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.12) !important;
+  background: #FFFFFF !important;
+}
+
+/* Dropdown in dialog */
+.p-dialog .p-dropdown,
+.p-dialog .p-multiselect,
+.p-dialog .p-select {
+  border-radius: 12px !important;
+  border: 1.5px solid #F0EBE3 !important;
+  background: #FFFDF5 !important;
+  transition: all 0.3s ease !important;
+}
+
+.p-dialog .p-dropdown:hover,
+.p-dialog .p-multiselect:hover,
+.p-dialog .p-select:hover {
+  border-color: #D7CCC8 !important;
+}
+
+/* InputNumber in dialog */
+.p-dialog .p-inputnumber-input {
+  border-radius: 12px !important;
+  background: #FFFDF5 !important;
+}
+
+/* DatePicker in dialog */
+.p-dialog .p-datepicker-input {
+  border-radius: 12px !important;
+  background: #FFFDF5 !important;
+}
+
+/* Toggle Switch */
+.p-dialog .p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider {
+  background: linear-gradient(135deg, #DAA520, #B8860B) !important;
+  box-shadow: 0 2px 8px rgba(218, 165, 32, 0.3) !important;
+}
+
+/* File Upload dropzone */
+.p-dialog .p-fileupload {
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+.p-dialog .p-fileupload-content {
+  border: 2px dashed #D7CCC8 !important;
+  border-radius: 14px !important;
+  background: #FFFDF5 !important;
+  transition: all 0.3s ease !important;
+  padding: 2rem !important;
+}
+
+.p-dialog .p-fileupload-content:hover {
+  border-color: #DAA520 !important;
+  background: #FFF8E1 !important;
+}
+
+/* Footer: action buttons */
+.p-dialog .p-dialog-footer {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF5 100%) !important;
+  border-top: 1px solid rgba(240, 235, 227, 0.5) !important;
+  padding: 1rem 1.5rem !important;
+}
+
+.p-dialog .p-dialog-footer .p-button {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  padding: 0.65rem 1.25rem !important;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.p-dialog .p-dialog-footer .p-button:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.p-dialog .p-dialog-footer .p-button:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Primary button in dialog */
+.p-dialog .p-dialog-footer .p-button:not(.p-button-text):not(.p-button-outlined) {
+  background: linear-gradient(135deg, #DAA520, #B8860B) !important;
+  border: none !important;
+  color: white !important;
+}
+
+.p-dialog .p-dialog-footer .p-button:not(.p-button-text):not(.p-button-outlined):hover {
+  background: linear-gradient(135deg, #C49419, #A07710) !important;
+  box-shadow: 0 6px 20px rgba(218, 165, 32, 0.3) !important;
+}
+
+/* Chip / Tag animations inside dialogs */
+.p-dialog .p-chip,
+.p-dialog .p-tag {
+  border-radius: 20px !important;
+  animation: chipPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes chipPop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Image preview in dialog */
+.p-dialog img {
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.p-dialog img:hover {
+  transform: scale(1.03);
+}
+
+/* PrimeVue Menu component overrides */
+.p-menu {
+  background: transparent !important;
+  color: var(--text-color, #3E2723) !important;
+  border: none !important;
+}
+
+.p-submenu-header {
+  color: var(--text-color-secondary, #795548) !important;
+  background: transparent !important;
+}
+
+/* Select Button */
+.p-selectbutton .p-button {
+  background: #FFFFFF !important;
+  color: var(--text-color, #3E2723) !important;
+  border-color: var(--surface-border, #F0EBE3) !important;
+}
+
+.p-selectbutton .p-button.p-highlight {
+  background: var(--primary-color, #DAA520) !important;
+  color: #FFFFFF !important;
+  border-color: var(--primary-color, #DAA520) !important;
+}
+
+/* Surface utility classes */
+.surface-ground {
+  background: #FDFBF7 !important;
+}
+
+.surface-card {
+  background: #FFFFFF !important;
+}
+
+.surface-100 {
+  background: #FFF8E1 !important;
+}
+
+.surface-hover {
+  background: #FFF3E0 !important;
+}
+
+/* Text utility classes */
+.text-900 {
+  color: #3E2723 !important;
+}
+
+.text-800 {
+  color: #4E342E !important;
+}
+
+.text-700 {
+  color: #5D4037 !important;
+}
+
+.text-600 {
+  color: #6D4C41 !important;
+}
+
+.text-500 {
+  color: #795548 !important;
+}
+
+.text-400 {
+  color: #8D6E63 !important;
+}
+
+.text-300 {
+  color: #A1887F !important;
+}
+
+/* ===== ANIMATED COFFEE DECORATIONS ===== */
+
+/* Floating coffee beans animation (used in sidebar) */
+@keyframes floatBean {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.06;
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(15deg);
+    opacity: 0.1;
+  }
+}
+
+@keyframes steamRise {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: translateY(-8px) scaleX(1.2);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: translateY(-16px) scaleX(0.8);
+    opacity: 0;
+  }
+}
+
+/* Coffee bean decorations for sidebar */
+.coffee-bean-deco {
+  position: absolute;
+  font-size: 1.2rem;
+  pointer-events: none;
+  animation: floatBean 4s ease-in-out infinite;
+  opacity: 0.06;
+  color: #5D4037;
+}
+
+.coffee-bean-deco:nth-child(1) {
+  bottom: 60px;
+  left: 20px;
+  animation-delay: 0s;
+}
+
+.coffee-bean-deco:nth-child(2) {
+  bottom: 120px;
+  right: 25px;
+  animation-delay: 1s;
+  font-size: 0.9rem;
+}
+
+.coffee-bean-deco:nth-child(3) {
+  bottom: 200px;
+  left: 40px;
+  animation-delay: 2s;
+  font-size: 1.4rem;
+}
+
+/* Steam animation for sidebar logo area */
+.steam-line {
+  position: absolute;
+  width: 3px;
+  height: 12px;
+  background: #D7CCC8;
+  border-radius: 3px;
+  animation: steamRise 2.5s ease-in-out infinite;
+}
+
+/* Coffee cup icon in sidebar footer */
+.sidebar-coffee-icon {
+  text-align: center;
+  padding: 1rem 0;
+  position: relative;
+  font-size: 2rem;
+  opacity: 0.15;
+  color: #5D4037;
 }

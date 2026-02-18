@@ -1,110 +1,165 @@
 <template>
-  <div class="gifts-view p-4">
-    <div class="flex flex-column sm:flex-row justify-content-between align-items-center mb-5 gap-3">
+  <div class="gifts-view p-4 md:p-6 fade-in">
+    <!-- Header Section -->
+    <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-6 gap-4">
       <div>
-        <h1 class="text-900 font-bold text-3xl mb-2">Hediyeler</h1>
-        <p class="text-500">Müşterilerin puanlarıyla alabileceği hediyeleri yönetin</p>
+        <h1 class="font-bold text-4xl mb-2 tracking-tight">
+          <span class="text-primary mr-2">✦</span>Hediyeler
+        </h1>
+        <p class="text-secondary text-lg">Müşterilerin puanlarıyla alabileceği ödülleri yönetin.</p>
       </div>
-      <div class="flex gap-2">
-        <Button 
-          label="Yeni Hediye Ekle" 
-          icon="pi pi-plus" 
-          @click="showAddModal = true" 
-          class="p-button-primary"
-        />
-      </div>
+      <Button 
+        label="Yeni Hediye Ekle" 
+        icon="pi pi-plus" 
+        @click="showAddModal = true" 
+        class="p-button-primary p-button-lg shadow-4 hover:shadow-6 transition-all transition-duration-300 border-round-xl px-4"
+      />
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-content-center p-5">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+    <div v-if="loading" class="flex justify-content-center align-items-center p-8 card shadow-1" style="min-height: 400px">
+      <div class="flex flex-column align-items-center gap-3">
+        <i class="pi pi-spin pi-spinner text-5xl text-primary"></i>
+        <span class="text-500 font-medium">Yükleniyor...</span>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="gifts.length === 0" class="surface-card p-5 border-round text-center shadow-1">
-      <i class="pi pi-gift text-500 text-5xl mb-3"></i>
-      <h3 class="text-900 font-bold text-xl mb-2">Henüz hediye eklenmemiş</h3>
-      <p class="text-500 mb-4">Müşterileriniz için ilk hediyenizi ekleyin.</p>
-      <Button label="Hediye Ekle" icon="pi pi-plus" @click="showAddModal = true" />
-    </div>
-
-    <div v-else class="grid">
-      <div v-for="gift in gifts" :key="gift._id" class="col-12 md:col-6 xl:col-4">
-        <div class="surface-card border-round-xl p-4 flex align-items-start shadow-1 border-1 surface-border hover:shadow-3 transition-duration-200 h-full relative overflow-hidden group">
-           
-           <!-- Decorative Stripe -->
-           <div class="absolute left-0 top-0 bottom-0 w-4px bg-primary border-round-left-xl"></div>
-
-           <!-- Content -->
-           <div class="flex-1 overflow-hidden pl-3 pr-2">
-             <div class="flex align-items-center mb-2">
-                <div class="flex align-items-center text-primary font-bold bg-primary-50 px-3 py-1 border-round-2xl">
-                   <i class="pi pi-star-fill mr-2 text-sm"></i>
-                   <span class="text-sm">{{ gift.pointCost }} P</span>
-                </div>
-                <div class="flex align-items-center text-500 text-xs ml-3">
-                   <i class="pi pi-calendar mr-1 opacity-70"></i>
-                   <span>{{ new Date(gift.createdAt).toLocaleDateString('tr-TR') }}</span>
-                </div>
-             </div>
-
-             <h3 class="text-900 font-bold text-lg m-0 line-height-3" style="word-break: break-word;">
-               {{ gift.title }}
-             </h3>
-           </div>
-
-           <!-- Actions -->
-           <div class="flex flex-column gap-2 ml-2">
-              <Button 
-                icon="pi pi-trash" 
-                text 
-                rounded 
-                severity="danger" 
-                class="hover:bg-red-50 w-2rem h-2rem"
-                @click="deleteGift(gift._id)" 
-                tooltip="Sil"
-              />
-              <Button 
-                icon="pi pi-pencil" 
-                text 
-                rounded 
-                severity="secondary" 
-                class="hover:bg-gray-100 w-2rem h-2rem"
-                @click="openEditModal(gift)" 
-                tooltip="Düzenle"
-              />
-           </div>
-
-        </div>
+    <div v-else-if="gifts.length === 0" class="flex flex-column align-items-center justify-content-center p-8 card shadow-1 text-center" style="min-height: 400px">
+      <div class="bg-primary-50 border-circle w-6rem h-6rem flex align-items-center justify-content-center mb-4 shadow-1">
+         <i class="pi pi-gift text-primary text-5xl"></i>
       </div>
+      <h3 class="font-bold text-2xl mb-2">Henüz hediye eklenmemiş</h3>
+      <p class="text-secondary text-lg mb-4 max-w-sm">Müşterilerinizi mutlu edecek ilk ödülü şimdi ekleyin.</p>
+      <Button label="Hediye Oluştur" icon="pi pi-plus" @click="showAddModal = true" class="p-button-outlined p-button-secondary border-round-xl" />
     </div>
 
+    <!-- Premium DataTable -->
+    <div v-else class="card border-round-2xl overflow-hidden shadow-1">
+       <DataTable 
+          :value="gifts" 
+          responsiveLayout="stack" 
+          :paginator="true" 
+          :rows="10"
+          dataKey="_id"
+          class="p-datatable-premium"
+          :rowHover="true"
+        >
+          <template #header>
+              <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center gap-3 p-2">
+                  <span class="p-input-icon-left">
+                      <i class="pi pi-search" />
+                      <InputText v-model="filters['global'].value" placeholder="Hediye Ara..." class="p-inputtext-sm" />
+                  </span>
+                  <span class="text-secondary text-sm">Toplam {{ gifts.length }} hediye</span>
+              </div>
+          </template>
+
+          <template #empty>
+              <div class="text-center p-4 text-secondary">Kayıt bulunamadı.</div>
+          </template>
+
+          <!-- Icon Column -->
+          <Column header="" headerStyle="width: 3rem">
+             <template #body>
+                <div class="bg-primary-50 border-circle w-2rem h-2rem flex align-items-center justify-content-center shadow-1">
+                   <i class="pi pi-gift text-primary text-xs"></i>
+                </div>
+             </template>
+          </Column>
+
+          <!-- Title Column -->
+          <Column field="title" header="HEDİYE ADI" sortable>
+             <template #body="{ data }">
+                <span class="font-bold text-lg">{{ data.title }}</span>
+             </template>
+          </Column>
+
+          <!-- Points Column -->
+          <Column field="pointCost" header="PUAN DEĞERİ" sortable>
+             <template #body="{ data }">
+                <div class="surface-100 px-3 py-1 border-round-xl inline-flex align-items-center gap-2">
+                   <i class="pi pi-star-fill text-yellow-500 text-sm"></i>
+                   <span class="font-medium">{{ data.pointCost }} P</span>
+                </div>
+             </template>
+          </Column>
+
+          <!-- Date Column -->
+          <Column field="createdAt" header="EKLENME TARİHİ" sortable>
+             <template #body="{ data }">
+                <span class="text-secondary text-sm">
+                   {{ new Date(data.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+                </span>
+             </template>
+          </Column>
+
+          <!-- Actions Column -->
+          <Column header="İŞLEMLER" headerStyle="width: 8rem; text-align: center" bodyStyle="text-align: center">
+             <template #body="{ data }">
+                <div class="flex gap-2 justify-content-center">
+                   <Button 
+                      icon="pi pi-pencil" 
+                      text 
+                      rounded 
+                      class="text-secondary hover:bg-surface-100 transition-colors duration-200"
+                      @click="openEditModal(data)" 
+                      v-tooltip.top="'Düzenle'"
+                    />
+                    <Button 
+                      icon="pi pi-trash" 
+                      text 
+                      rounded 
+                      severity="danger" 
+                      class="text-red-500 hover:bg-red-50 transition-colors duration-200"
+                      @click="deleteGift(data._id)" 
+                      v-tooltip.top="'Sil'"
+                    />
+                </div>
+             </template>
+          </Column>
+       </DataTable>
+    </div>
+
+    <!-- Elegant Modal -->
     <Dialog 
       v-model:visible="showAddModal" 
       modal 
-      :header="editingId ? 'Hediyeyi Düzenle' : 'Yeni Hediye Ekle'" 
-      :style="{ width: '400px' }"
-      class="p-fluid"
+      :header="editingId ? 'Ödülü Düzenle' : 'Yeni Ödül Ekle'" 
+      :style="{ width: '450px' }"
+      class="p-fluid premium-dialog"
+      :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
       @hide="resetModal"
     >
-      <div class="field">
-        <label for="title" class="font-medium text-900">Hediye Adı</label>
-        <InputText id="title" v-model="newGift.title" placeholder="Örn: Bedava Kahve" autofocus />
-      </div>
-      <div class="field">
-        <label for="pointCost" class="font-medium text-900">Puan Değeri</label>
-        <InputNumber id="pointCost" v-model="newGift.pointCost" placeholder="Örn: 100" />
+      <div class="flex flex-column gap-4 py-3">
+        <div class="field">
+          <label for="title" class="font-bold mb-2 block">Hediye Başlığı</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-tag" />
+            <InputText id="title" v-model="newGift.title" placeholder="Örn: 1 Adet Filtre Kahve" class="w-full" size="large" />
+          </span>
+        </div>
+        <div class="field">
+          <label for="pointCost" class="font-bold mb-2 block">Puan Değeri</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-star" />
+            <InputNumber id="pointCost" v-model="newGift.pointCost" placeholder="Örn: 150" class="w-full" size="large" inputClass="pl-5" />
+          </span>
+        </div>
       </div>
 
       <template #footer>
-        <Button label="İptal" text plain @click="resetModal" />
-        <Button 
-          :label="editingId ? 'Güncelle' : 'Ekle'" 
-          icon="pi pi-check" 
-          @click="saveGift" 
-          :loading="submitting" 
-          :disabled="!newGift.title || !newGift.pointCost"
-        />
+        <div class="flex gap-2 justify-content-end pt-3">
+            <Button label="Vazgeç" text plain @click="resetModal" class="px-4" />
+            <Button 
+              :label="editingId ? 'Kaydet' : 'Oluştur'" 
+              icon="pi pi-check" 
+              @click="saveGift" 
+              :loading="submitting" 
+              :disabled="!newGift.title || !newGift.pointCost"
+              class="px-4 border-round-lg shadow-2"
+            />
+        </div>
       </template>
     </Dialog>
 
@@ -114,19 +169,22 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { useAuthStore } from '../stores/auth.store'; // Import Auth Store
+import { defineComponent, ref } from 'vue';
+import { useAuthStore } from '../stores/auth.store'; 
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+const FilterMatchMode = { CONTAINS: 'contains' };
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
 
 // API Helper
-const API_URL = 'https://counpaign.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://counpaign.com/api';
 
 const api = {
   async request(method: string, endpoint: string, body: any = null) {
@@ -152,7 +210,7 @@ const api = {
 
 export default defineComponent({
   name: 'GiftsView',
-  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog },
+  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog, DataTable, Column },
   setup() {
     const authStore = useAuthStore();
     const toast = useToast();
@@ -165,9 +223,13 @@ export default defineComponent({
       loading: true,
       
       showAddModal: false,
-      editingId: null as string | null, // Track editing state
+      editingId: null as string | null,
       newGift: { title: '', pointCost: null },
       submitting: false,
+      
+      filters: {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+      }
     };
   },
   async created() {
@@ -228,11 +290,6 @@ export default defineComponent({
       }
     },
     
-    // Kept for direct click on Add Button
-    createGift() {
-       this.saveGift();
-    },
-
     async deleteGift(id: string) {
       this.confirm.require({
         message: 'Bu hediyeyi silmek istediğinize emin misiniz?',
@@ -259,8 +316,75 @@ export default defineComponent({
 
 <style scoped>
 .gifts-view {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
-/* PrimeFlex classes handle most styling now */
+
+/* Premium DataTable Styles - Light Theme Compatible */
+:deep(.p-datatable-premium) {
+  background: transparent;
+}
+
+:deep(.p-datatable-premium .p-datatable-header) {
+  background: transparent;
+  border: none;
+  padding: 1.5rem;
+}
+
+:deep(.p-datatable-premium .p-datatable-thead > tr > th) {
+  background: var(--surface-ground);
+  color: var(--text-color-secondary);
+  border: none;
+  padding: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+:deep(.p-datatable-premium .p-datatable-tbody > tr) {
+  background: transparent;
+  transition: all 0.2s;
+}
+
+:deep(.p-datatable-premium .p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid var(--surface-border);
+  padding: 1.25rem 1rem;
+}
+
+:deep(.p-datatable-premium .p-datatable-tbody > tr:hover) {
+  background: var(--surface-ground) !important;
+}
+
+:deep(.p-datatable-premium .p-datatable-tbody > tr:last-child > td) {
+  border-bottom: none;
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+:deep(.p-paginator) {
+  background: transparent;
+  border: none;
+  margin-top: 1rem;
+}
+
+:deep(.p-paginator .p-paginator-page.p-highlight) {
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+  border-radius: 50%;
+  border: none;
+}
+
+:deep(.p-paginator .p-paginator-page:not(.p-highlight):hover) {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  color: var(--text-color);
+}
 </style>

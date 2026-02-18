@@ -3,7 +3,9 @@ import { ref, onMounted, watch } from 'vue';
 import { useAuthStore } from '../stores/auth.store';
 import Chart from 'primevue/chart';
 import Button from 'primevue/button';
-import SelectButton from 'primevue/selectbutton'; // Needed for Chart filtering
+
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const authStore = useAuthStore();
 
@@ -13,7 +15,6 @@ const stats = ref({
     firms: { total: 0, month: 0 },
     transactions: { total: 0, today: 0, chart: [] as any[] },
     campaigns: { total: 0, active: 0 },
-    participations: { total: 0, won: 0 },
     rewards: {
         points: 0,
         stamps: 0,
@@ -27,7 +28,6 @@ const stats = ref({
 // Firm Stats
 const firmStats = ref({
     customers: { total: 0 },
-    participations: { total: 0 },
     transactions: { daily: 0, monthly: 0 },
     rewards: { weeklyPoints: 0, weeklyStamps: 0, weeklyCoffee: 0 },
     reviews: { total: 0, avgRating: 0 },
@@ -38,8 +38,7 @@ const firmStats = ref({
     }
 });
 
-const chartRange = ref('Haftalık');
-const rangeOptions = ['Haftalık', 'Aylık'];
+
 
 // Chart options
 const chartOptions = ref({
@@ -66,7 +65,7 @@ const firmTxChartData = ref();
 
 const fetchSuperAdminStats = async () => {
     try {
-        const response = await fetch('https://counpaign.com/api/dashboard/stats');
+        const response = await fetch(`${API_URL}/dashboard/stats`);
         const data = await response.json();
         stats.value = data;
         
@@ -90,7 +89,7 @@ const fetchSuperAdminStats = async () => {
 const fetchFirmStats = async () => {
     if (!authStore.user?.businessId) return;
     try {
-        const response = await fetch(`https://counpaign.com/api/dashboard/firm-stats?businessId=${authStore.user.businessId}`);
+        const response = await fetch(`${API_URL}/dashboard/firm-stats?businessId=${authStore.user.businessId}`);
         if (!response.ok) {
             console.error('Firm stats API error:', response.status);
             return;
@@ -106,8 +105,7 @@ const fetchFirmStats = async () => {
 };
 
 const updateFirmCharts = () => {
-    const isWeekly = chartRange.value === 'Haftalık';
-    const sliceCount = isWeekly ? 7 : 30; // Last 7 or 30 days
+    const sliceCount = 7; // Last 7 days
     
     // Wallet Adds Chart
     const walletData = firmStats.value.charts.walletAdds.slice(-sliceCount);
@@ -141,9 +139,7 @@ const updateFirmCharts = () => {
     };
 };
 
-watch(chartRange, () => {
-    updateFirmCharts();
-});
+
 
 onMounted(() => {
     if (authStore.user?.role === 'super_admin') {
@@ -232,43 +228,12 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- 5. Kampanya Katılım (New) -->
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="card p-4 h-full">
-                        <div class="flex justify-content-between mb-3">
-                            <div>
-                                <span class="block text-500 font-medium mb-3">Kampanya Katılım</span>
-                                <div class="text-900 font-bold text-4xl">{{ stats.participations.total }}</div>
-                            </div>
-                            <div class="flex align-items-center justify-content-center border-round" style="width:3rem;height:3rem; background: rgba(33, 150, 243, 0.1)">
-                                <i class="pi pi-check-circle text-blue-400 text-2xl"></i>
-                            </div>
-                        </div>
-                        <span class="text-blue-400 font-medium">{{ stats.participations.won }} </span>
-                        <span class="text-500 text-sm">kampanya kazanımı</span>
-                    </div>
-                </div>
-
-                <!-- 6. Ödül Özeti (Clickable KPI Cards) -->
-                <div class="col-12 md:col-12 lg:col-9">
+                <!-- 5. Ödül Özeti (Clickable KPI Cards) -->
+                <div class="col-12 md:col-12 lg:col-12">
                     <div class="card p-4 h-full flex flex-column justify-content-center">
                         <span class="block text-500 font-medium mb-3">Ödül Özeti</span>
                         <div class="grid">
-                            <div class="col-12 md:col-4">
-                                <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/points-detail')">
-                                    <div class="flex align-items-center gap-3">
-                                        <div class="bg-purple-100 border-circle p-2">
-                                            <i class="pi pi-star text-purple-500"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="text-500 text-sm">Kazanılan Puan</div>
-                                            <div class="text-xl font-bold text-purple-500">{{ stats.rewards.points?.toLocaleString('tr-TR') || 0 }}</div>
-                                        </div>
-                                        <i class="pi pi-chevron-right text-400"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 md:col-4">
+                            <div class="col-12 md:col-6">
                                 <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/stamps-detail')">
                                     <div class="flex align-items-center gap-3">
                                         <div class="bg-yellow-100 border-circle p-2">
@@ -282,7 +247,7 @@ onMounted(() => {
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 md:col-4">
+                            <div class="col-12 md:col-6">
                                 <div class="p-3 border-round kpi-card surface-100" @click="$router.push('/admin/gifts-detail')">
                                     <div class="flex align-items-center gap-3">
                                         <div class="bg-teal-100 border-circle p-2">
@@ -368,7 +333,7 @@ onMounted(() => {
                     <h1 class="text-900 font-bold">{{ authStore.user?.businessName }}</h1>
                     <p class="text-secondary">İşletmenizin performans özetleri</p>
                 </div>
-                <SelectButton v-model="chartRange" :options="rangeOptions" aria-label="Zaman Aralığı" />
+
             </div>
 
             <!-- Stats Cards Row 1 -->
@@ -384,19 +349,8 @@ onMounted(() => {
                         <p class="mt-2 mb-0 text-sm text-500">Cüzdanına ekleyenler</p>
                     </div>
                 </div>
-                <!-- Participation Count -->
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="card p-4 h-full border-left-3 border-orange-500">
-                        <span class="block text-500 font-medium mb-3">Kampanya Katılım</span>
-                         <div class="flex justify-content-between align-items-center">
-                            <div class="text-900 font-bold text-3xl">{{ firmStats?.participations?.total || 0 }}</div>
-                            <i class="pi pi-ticket text-orange-500 text-2xl"></i>
-                        </div>
-                         <p class="mt-2 mb-0 text-sm text-500">Toplam katılım</p>
-                    </div>
-                </div>
                 <!-- Daily Transactions -->
-                <div class="col-12 md:col-6 lg:col-3">
+                <div class="col-12 md:col-6 lg:col-4">
                     <div class="card p-4 h-full border-left-3 border-green-500">
                         <span class="block text-500 font-medium mb-3">Günlük İşlem</span>
                          <div class="flex justify-content-between align-items-center">
@@ -421,19 +375,7 @@ onMounted(() => {
 
             <!-- Stats Cards Row 2 (Weekly Rewards) - Clickable -->
             <div class="grid mb-4">
-                 <div class="col-12 md:col-4">
-                    <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/points-detail')">
-                        <div class="mr-3 bg-purple-100 border-circle p-3">
-                            <i class="pi pi-star text-purple-500 text-xl"></i>
-                        </div>
-                         <div class="flex-1">
-                             <span class="text-500 font-medium text-sm">Kazandırdığı Puan (Haftalık)</span>
-                             <div class="text-900 font-bold text-xl mt-1">{{ firmStats?.rewards?.weeklyPoints || 0 }} Puan</div>
-                        </div>
-                        <i class="pi pi-chevron-right text-400"></i>
-                    </div>
-                 </div>
-                 <div class="col-12 md:col-4">
+                 <div class="col-12 md:col-6">
                     <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/stamps-detail')">
                         <div class="mr-3 bg-yellow-100 border-circle p-3">
                             <i class="pi pi-box text-yellow-500 text-xl"></i>
@@ -445,7 +387,7 @@ onMounted(() => {
                         <i class="pi pi-chevron-right text-400"></i>
                     </div>
                  </div>
-                 <div class="col-12 md:col-4">
+                 <div class="col-12 md:col-6">
                     <div class="card p-4 h-full flex align-items-center kpi-card" @click="$router.push('/gifts-detail')">
                          <div class="mr-3 bg-teal-100 border-circle p-3">
                             <i class="pi pi-gift text-teal-500 text-xl"></i>

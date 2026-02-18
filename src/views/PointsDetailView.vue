@@ -113,7 +113,7 @@ onMounted(() => {
                     </template>
                 </Column>
 
-                <Column field="campaign" header="Kampanya" style="min-width: 200px">
+                <Column field="campaign" header="Detay" style="min-width: 200px">
                     <template #body="{ data }">
                         <span class="text-secondary">{{ data.campaign }}</span>
                     </template>
@@ -126,7 +126,7 @@ onMounted(() => {
                             :class="{
                                 'bg-green-100 text-green-700': data.status === 'Aktif',
                                 'bg-orange-100 text-orange-700': data.status === 'Sona Ermiş',
-                                'bg-red-100 text-red-700': data.status === 'Silinmiş'
+                                'bg-red-100 text-red-700': data.status === 'Firma Silinmiş'
                             }"
                         >{{ data.status }}</span>
                     </template>

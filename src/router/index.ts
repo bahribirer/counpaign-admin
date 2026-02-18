@@ -129,6 +129,26 @@ router.beforeEach((to, _from, next) => {
         next('/login');
     } else if (to.path === '/login' && token) {
         next('/dashboard');
+    } else if (to.path === '/manage-campaigns' && token) {
+        // Only super_admin can access the all-firms campaign list
+        try {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                if (user.role !== 'super_admin') {
+                    // Business admin → redirect to their own campaigns
+                    if (user.businessId) {
+                        next(`/manage-campaigns/${user.businessId}`);
+                    } else {
+                        next('/dashboard');
+                    }
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Route guard parse error:', e);
+        }
+        next();
     } else {
         next();
     }

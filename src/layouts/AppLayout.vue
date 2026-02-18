@@ -7,6 +7,8 @@ import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
 import axios from 'axios';
+import SidebarCoffeeAnimation from '../components/SidebarCoffeeAnimation.vue';
+import PanelCoffeeDecorations from '../components/PanelCoffeeDecorations.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -209,10 +211,12 @@ const pageTitle = computed(() => {
         <!-- Sidebar -->
         <div class="layout-sidebar">
             <Menu :model="items" class="w-full border-none bg-transparent" />
+            <SidebarCoffeeAnimation />
         </div>
 
         <!-- Main Content -->
         <div class="layout-main-container">
+            <PanelCoffeeDecorations />
             <div class="layout-main">
                 <router-view />
             </div>
@@ -235,12 +239,13 @@ const pageTitle = computed(() => {
     top: 0;
     width: 100%;
     padding: 0 2rem;
-    background-color: #09090B;
+    background-color: var(--surface-card); /* White topbar */
     transition: left 0.2s;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid #18181B;
+    border-bottom: 1px solid var(--surface-border);
+    box-shadow: 0 4px 15px rgba(62, 39, 35, 0.05); /* Soft shadow */
 }
 
 .topbar-start, .topbar-end {
@@ -251,23 +256,27 @@ const pageTitle = computed(() => {
 .logo-text {
     font-size: 1.75rem;
     font-weight: 900;
-    color: var(--text-color);
-    letter-spacing: -0.05em;
+    background: linear-gradient(135deg, #3E2723 0%, #DAA520 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+    transition: opacity 0.2s ease;
 }
 
 .layout-sidebar {
     position: fixed;
-    width: 250px;
+    width: 260px;
     height: calc(100vh - 5rem);
     z-index: 999;
     overflow-y: auto;
     user-select: none;
     top: 5rem;
     left: 0;
-    transition: transform 0.2s, left 0.2s;
-    background-color: var(--surface-card);
-    border-right: 1px solid var(--surface-border);
-    padding: 1rem;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s;
+    background: linear-gradient(180deg, #FDFBF7 0%, #FFF8E1 50%, #FDFBF7 100%);
+    border-right: 1px solid #F0EBE3;
+    padding: 1.25rem 1rem;
 }
 
 .layout-main-container {
@@ -276,7 +285,7 @@ const pageTitle = computed(() => {
     min-height: 100vh;
     justify-content: space-between;
     padding: 7rem 2rem 2rem 2rem;
-    padding-left: 270px; /* 250px sidebar + 20px gap */
+    padding-left: 280px;
     transition: margin-left 0.2s;
 }
 
@@ -291,33 +300,104 @@ const pageTitle = computed(() => {
 }
 
 @media (max-width: 991px) {
-    /* Mobile: Base (Active) means Shown */
     .layout-sidebar {
         transform: translateX(0);
         left: 0;
-        box-shadow: 0px 3px 5px rgba(0,0,0,0.02), 0px 0px 2px rgba(0,0,0,0.05), 0px 1px 4px rgba(0,0,0,0.08); /* Show shadow when open */
+        box-shadow: 4px 0 25px rgba(62, 39, 35, 0.08);
     }
     
     .layout-main-container {
-        padding-left: 2rem; /* Always full width content on mobile */
+        padding-left: 2rem;
     }
     
-    /* Mobile: Inactive means Hidden */
     .layout-static-inactive .layout-sidebar {
         transform: translateX(-100%);
         box-shadow: none;
     }
 }
 
-:deep(.p-menuitem-link.router-link-active) {
-    background-color: var(--primary-color) !important;
-    color: var(--primary-color-text) !important;
-    border-radius: 12px;
+/* ===== PREMIUM SIDEBAR MENU STYLING ===== */
+
+/* Section headers (Home, İşletme Yönetimi, Management) */
+:deep(.p-submenu-header) {
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    color: #A1887F !important;
+    padding: 1.25rem 0.75rem 0.5rem !important;
+    background: transparent !important;
+    border: none !important;
 }
 
+/* Menu items */
+:deep(.p-menuitem) {
+    margin: 2px 0;
+}
+
+:deep(.p-menuitem-link) {
+    border-radius: 12px !important;
+    padding: 0.7rem 0.85rem !important;
+    color: #5D4037 !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    gap: 0.75rem !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Icon styling */
+:deep(.p-menuitem-link .p-menuitem-icon) {
+    color: #8D6E63 !important;
+    font-size: 1.05rem !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    min-width: 1.25rem;
+}
+
+/* Hover state */
 :deep(.p-menuitem-link:hover) {
-    background-color: rgba(0,0,0,0.05); /* or lighter primary */
-    border-radius: 12px;
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFF8E1 100%) !important;
+    color: #3E2723 !important;
+    border-radius: 12px !important;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(218, 165, 32, 0.08);
+}
+
+:deep(.p-menuitem-link:hover .p-menuitem-icon) {
+    color: #DAA520 !important;
+    transform: scale(1.2) rotate(-8deg);
+}
+
+:deep(.p-menuitem-link:hover .p-menuitem-text) {
+    color: #3E2723 !important;
+    font-weight: 600 !important;
+}
+
+/* Active (router-link-active) state */
+:deep(.p-menuitem-link.router-link-active) {
+    background: linear-gradient(135deg, #DAA520 0%, #B8860B 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 15px rgba(218, 165, 32, 0.3);
+    transform: translateX(2px);
+}
+
+:deep(.p-menuitem-link.router-link-active .p-menuitem-icon) {
+    color: #FFFFFF !important;
+    transform: scale(1.1);
+}
+
+:deep(.p-menuitem-link.router-link-active .p-menuitem-text) {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+:deep(.p-menuitem-link.router-link-active:hover) {
+    background: linear-gradient(135deg, #C49419 0%, #A07710 100%) !important;
+    box-shadow: 0 6px 20px rgba(218, 165, 32, 0.35);
 }
 </style>
 

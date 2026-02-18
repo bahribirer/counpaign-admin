@@ -113,7 +113,14 @@ onMounted(() => {
                     </template>
                 </Column>
 
-                <Column field="campaign" header="Kampanya" style="min-width: 200px">
+                <Column field="points" header="Kazanılan Puan" sortable style="min-width: 130px">
+                    <template #body="{ data }">
+                        <span v-if="data.points > 0" class="font-bold text-purple-500">+{{ data.points }} Puan</span>
+                        <span v-else class="text-400">-</span>
+                    </template>
+                </Column>
+
+                <Column field="campaign" header="Detay" style="min-width: 200px">
                     <template #body="{ data }">
                         <span class="text-secondary">{{ data.campaign }}</span>
                     </template>
@@ -126,7 +133,7 @@ onMounted(() => {
                             :class="{
                                 'bg-green-100 text-green-700': data.status === 'Aktif',
                                 'bg-orange-100 text-orange-700': data.status === 'Sona Ermiş',
-                                'bg-red-100 text-red-700': data.status === 'Silinmiş'
+                                'bg-red-100 text-red-700': data.status === 'Firma Silinmiş'
                             }"
                         >{{ data.status }}</span>
                     </template>

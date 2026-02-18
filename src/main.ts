@@ -32,7 +32,10 @@ app.use(createPinia());
 app.use(router);
 app.use(PrimeVue, {
     theme: {
-        preset: Aura
+        preset: Aura,
+        options: {
+            darkModeSelector: 'none'  // Force light mode always
+        }
     },
     ripple: true
 });

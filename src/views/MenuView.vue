@@ -47,6 +47,12 @@
                    <i class="pi pi-star-fill text-xs"></i> POPÜLER
                 </span>
              </div>
+             <!-- Campaign Badge -->
+             <div v-if="product.campaignId" class="absolute top-0 left-0 m-2">
+                <span class="bg-primary text-white text-xs font-bold px-2 py-1 border-round shadow-1 flex align-items-center gap-1">
+                   <i class="pi pi-megaphone text-xs"></i> Kampanya Ürünü
+                </span>
+             </div>
            </div>
 
            <!-- Content -->
@@ -55,17 +61,26 @@
                 <h3 class="text-900 font-bold text-lg m-0 text-overflow-ellipsis overflow-hidden white-space-nowrap" :title="product.name">
                   {{ product.name }}
                 </h3>
-                <span class="text-primary font-bold text-lg white-space-nowrap ml-2">
-                   <span v-if="product.discount > 0" class="text-500 text-sm line-through mr-2">{{ formatCurrency(product.price) }}</span>
-                   {{ formatCurrency(product.price - product.discount) }}
-                 </span>
+                 <div class="flex flex-column sm:flex-row align-items-end sm:align-items-center gap-1 ml-2">
+                    <span v-if="product.discount > 0" class="text-500 line-through text-xs sm:text-sm">
+                        {{ formatCurrency(product.price) }}
+                    </span>
+                    <span class="text-primary font-bold text-lg white-space-nowrap">
+                        {{ formatCurrency(product.discount > 0 ? product.price - product.discount : product.price) }}
+                    </span>
+                 </div>
              </div>
              <p class="text-500 text-sm m-0 mb-3 flex-1 overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                {{ product.description || 'Açıklama yok' }}
              </p>
 
              <!-- Actions -->
-             <div class="flex gap-2 mt-auto border-top-1 surface-border pt-3">
+             <div v-if="product.campaignId" class="mt-auto border-top-1 surface-border pt-3">
+               <p class="text-500 text-xs m-0 text-center">
+                 <i class="pi pi-lock mr-1"></i>Bu ürün kampanya tarafından yönetilmektedir. Değiştirmek için kampanyayı düzenleyin.
+               </p>
+             </div>
+             <div v-else class="flex gap-2 mt-auto border-top-1 surface-border pt-3">
                <Button 
                   icon="pi pi-pencil ml-0" 
                   label="Düzenle"
@@ -133,22 +148,19 @@
             <label for="price" class="font-bold">Fiyat (TL)</label>
             <InputNumber id="price" v-model="itemForm.price" mode="currency" currency="TRY" locale="tr-TR" placeholder="0.00" />
         </div>
-        <div class="field col">
-            <label for="discount" class="font-bold">İndirim (TL)</label>
-            <InputNumber id="discount" v-model="itemForm.discount" mode="currency" currency="TRY" locale="tr-TR" placeholder="0.00" />
-        </div>
+
         <div class="field col">
             <label for="category" class="font-bold">Kategori</label>
-            <Dropdown id="category" v-model="itemForm.category" :options="categories" placeholder="Seçiniz" class="w-full" />
+            <Select id="category" v-model="itemForm.category" :options="categories" placeholder="Seçiniz" class="w-full" />
         </div>
       </div>
       <div class="formgrid grid">
         <div class="field col flex align-items-center mb-3">
-             <InputSwitch v-model="itemForm.isPopular" inputId="popular" />
+             <ToggleSwitch v-model="itemForm.isPopular" inputId="popular" />
              <label for="popular" class="ml-2 cursor-pointer select-none">Popüler</label>
         </div>
         <div class="field col flex align-items-center mb-3">
-             <InputSwitch v-model="itemForm.isAvailable" inputId="available" />
+             <ToggleSwitch v-model="itemForm.isAvailable" inputId="available" />
              <label for="available" class="ml-2 cursor-pointer select-none">Mevcut</label>
         </div>
       </div>
@@ -185,8 +197,8 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
-import InputSwitch from 'primevue/inputswitch';
+import Select from 'primevue/select';
+import ToggleSwitch from 'primevue/toggleswitch';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 
@@ -195,7 +207,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://counpaign.com/api';
 
 export default defineComponent({
   name: 'MenuView',
-  components: { Button, Dialog, InputText, InputNumber, Textarea, InputSwitch, Toast, ConfirmDialog, Dropdown },
+  components: { Button, Dialog, InputText, InputNumber, Textarea, ToggleSwitch, Toast, ConfirmDialog, Select },
   setup() {
     const authStore = useAuthStore();
     const toast = useToast();
@@ -213,7 +225,6 @@ export default defineComponent({
     const itemForm = reactive({
         name: '',
         price: null as number | null,
-        discount: 0 as number,
         description: '',
         category: 'Sıcak Kahveler',
         isPopular: false,
@@ -278,7 +289,6 @@ export default defineComponent({
         Object.assign(itemForm, { 
           name: '', 
           price: null, 
-          discount: 0, 
           description: '', 
           category: 'Sıcak Kahveler', 
           isPopular: false, 
@@ -294,7 +304,6 @@ export default defineComponent({
         Object.assign(itemForm, {
             name: product.name,
             price: product.price,
-            discount: product.discount || 0,
             description: product.description || '',
             category: product.category || 'Sıcak Kahveler',
             isPopular: product.isPopular,
@@ -322,7 +331,7 @@ export default defineComponent({
             formData.append('description', itemForm.description);
             formData.append('category', itemForm.category);
             formData.append('isPopular', itemForm.isPopular.toString());
-            formData.append('discount', (itemForm.discount || 0).toString());
+
             formData.append('isAvailable', itemForm.isAvailable.toString());
             if (itemForm.imageFile) {
                 formData.append('image', itemForm.imageFile);
@@ -361,6 +370,59 @@ export default defineComponent({
         }
     };
 
+    const executeDelete = async (id: string, force: boolean) => {
+        try {
+            const token = localStorage.getItem('token');
+            const url = force ? `${API_URL}/products/${id}?force=true` : `${API_URL}/products/${id}`;
+            
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 409) {
+                const data = await res.json();
+                
+                // Show Warning Dialog for cascade delete
+                setTimeout(() => {
+                    confirm.require({
+                        message: `UYARI: ${data.message} (${data.campaigns?.length || 0} kampanya etkilenecek).\nBu işlem geri alınamaz.`,
+                        header: 'Bağlı Kampanyalar Var',
+                        icon: 'pi pi-exclamation-circle text-red-600',
+                        acceptClass: 'p-button-danger',
+                        acceptLabel: 'Anladım, Hepsini Sil',
+                        rejectLabel: 'İptal',
+                        accept: () => executeDelete(id, true)
+                    });
+                }, 300);
+                return;
+            }
+
+            if (!res.ok) throw new Error('Silme başarısız');
+            
+            const responseData = await res.json();
+            
+            // Remove the deleted product AND any cascade-deleted campaign products
+            products.value = products.value.filter(p => {
+                // Remove the main deleted product
+                if (p._id === id) return false;
+                
+                // Remove products that belong to the deleted campaigns (fırsat ürünleri)
+                if (responseData.deletedCampaignIds && 
+                    responseData.deletedCampaignIds.includes(p.campaignId)) {
+                    return false;
+                }
+                
+                return true;
+            });
+
+            toast.add({ severity: 'success', summary: 'Silindi', detail: 'Ürün ve ilişkili veriler silindi', life: 3000 });
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.add({ severity: 'error', summary: 'Hata', detail: 'Silme işlemi başarısız oldu', life: 3000 });
+        }
+    };
+
     const deleteProduct = (id: string) => {
          confirm.require({
             message: 'Bu ürünü silmek istediğinize emin misiniz?',
@@ -369,21 +431,7 @@ export default defineComponent({
             acceptClass: 'p-button-danger',
             acceptLabel: 'Evet, Sil',
             rejectLabel: 'Vazgeç',
-            accept: async () => {
-                try {
-                    const token = localStorage.getItem('token');
-                     const res = await fetch(`${API_URL}/products/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (!res.ok) throw new Error('Silme başarısız');
-                    
-                    products.value = products.value.filter(p => p._id !== id);
-                    toast.add({ severity: 'success', summary: 'Silindi', detail: 'Ürün menüden kaldırıldı', life: 3000 });
-                } catch (error) {
-                    toast.add({ severity: 'error', summary: 'Hata', detail: 'Silinemedi', life: 3000 });
-                }
-            }
+            accept: () => executeDelete(id, false)
         });
     };
 
