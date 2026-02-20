@@ -7,7 +7,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import axios from 'axios';
+import api from '../services/api';
 
 interface Notification {
     _id: string;
@@ -28,9 +28,7 @@ const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).le
 const fetchNotifications = async () => {
     isLoading.value = true;
     try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/notifications/my-notifications`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get(`/notifications/my-notifications`);
         if (Array.isArray(res.data)) {
             notifications.value = res.data;
         } else {
@@ -47,9 +45,7 @@ const fetchNotifications = async () => {
 const markAsRead = async (notification: Notification) => {
     if (notification.isRead) return;
     try {
-        await axios.put(`${import.meta.env.VITE_API_URL}/notifications/${notification._id}/read`, {}, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        await api.put(`/notifications/${notification._id}/read`, {});
         notification.isRead = true;
         toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Bildirim okundu olarak işaretlendi', life: 2000 });
     } catch (e) {

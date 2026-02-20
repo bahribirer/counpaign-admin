@@ -8,7 +8,7 @@ import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import Dialog from 'primevue/dialog';
 import { useToast } from 'primevue/usetoast';
-import axios from 'axios';
+import api from '../services/api';
 
 interface UserNotification {
     _id: string;
@@ -42,9 +42,7 @@ const deletedCount = computed(() => notifications.value.filter(n => n.isDeleted)
 const fetchNotifications = async () => {
     isLoading.value = true;
     try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/notifications/all-users`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get(`/notifications/all-users`);
         if (Array.isArray(res.data)) {
             notifications.value = res.data;
         } else {
@@ -68,9 +66,7 @@ const deleteNotification = async () => {
 
     deleting.value = true;
     try {
-        await axios.delete(`${import.meta.env.VITE_API_URL}/notifications/${notificationToDelete.value._id}`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        await api.delete(`/notifications/${notificationToDelete.value._id}`);
         
         toast.add({ severity: 'success', summary: 'Başarılı', detail: 'Bildirim kalıcı olarak silindi', life: 3000 });
         notifications.value = notifications.value.filter(n => n._id !== notificationToDelete.value?._id);

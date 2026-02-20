@@ -1,27 +1,18 @@
 import { type UserInfo } from '../types/auth.types';
-
-const API_URL = `${import.meta.env.VITE_API_URL}/auth/admin`;
+import api from './api';
 
 export class AuthService {
 
     static async login(username: string, password: string): Promise<UserInfo> {
         try {
-            const response = await fetch(`${API_URL}/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
+            const response = await api.post(`/auth/admin/login`, { username, password });
+            const data = response.data;
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
-            }
-
-            // Store token
+            // Store tokens
             localStorage.setItem('token', data.token);
+            if (data.refreshToken) {
+                localStorage.setItem('refreshToken', data.refreshToken);
+            }
 
             return data.user;
         } catch (error) {
@@ -32,5 +23,6 @@ export class AuthService {
 
     static logout(): void {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
     }
 }

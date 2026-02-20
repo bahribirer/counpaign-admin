@@ -6,7 +6,7 @@ import Menu from 'primevue/menu';
 import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
-import axios from 'axios';
+import api from '../services/api';
 import SidebarCoffeeAnimation from '../components/SidebarCoffeeAnimation.vue';
 import PanelCoffeeDecorations from '../components/PanelCoffeeDecorations.vue';
 
@@ -23,9 +23,7 @@ const unreadCount = computed(() => notifications.value.filter((n: any) => !n.isR
 const fetchNotifications = async () => {
     if (authStore.user?.role !== 'business') return;
     try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/notifications/my-notifications`, {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        });
+        const res = await api.get(`/notifications/my-notifications`);
         if (Array.isArray(res.data)) {
             notifications.value = res.data;
         } else {

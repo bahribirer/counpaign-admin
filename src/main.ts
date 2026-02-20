@@ -12,6 +12,10 @@ import './style.css';
 
 import App from './App.vue';
 import router from './router';
+import { setupFetchInterceptor } from './plugins/fetchInterceptor';
+
+// Apply Fetch Interceptor before mounting
+setupFetchInterceptor();
 
 // Initialize Theme Immediately to prevent FOUC
 try {
