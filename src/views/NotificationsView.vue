@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useAuthStore } from '../stores/auth.store';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -17,7 +16,6 @@ interface Notification {
     createdAt: string;
 }
 
-const authStore = useAuthStore();
 const toast = useToast();
 
 // Notification State
