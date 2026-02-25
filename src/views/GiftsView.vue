@@ -60,18 +60,24 @@
           </template>
 
           <!-- Icon Column -->
-          <Column header="" headerStyle="width: 3rem">
-             <template #body>
-                <div class="bg-primary-50 border-circle w-2rem h-2rem flex align-items-center justify-content-center shadow-1">
-                   <i class="pi pi-gift text-primary text-xs"></i>
+          <Column header="" headerStyle="width: 4rem">
+             <template #body="{ data }">
+                <div v-if="data.image" class="w-3rem h-3rem border-circle overflow-hidden shadow-1 flex align-items-center justify-content-center bg-surface-100">
+                   <img :src="getApiUrl(data.image)" alt="Gift Image" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div v-else class="bg-primary-50 border-circle w-3rem h-3rem flex align-items-center justify-content-center shadow-1">
+                   <i class="pi pi-gift text-primary text-lg"></i>
                 </div>
              </template>
           </Column>
 
-          <!-- Title Column -->
+          <!-- Title & Description Column -->
           <Column field="title" header="HEDİYE ADI" sortable>
              <template #body="{ data }">
-                <span class="font-bold text-lg">{{ data.title }}</span>
+                <div class="flex flex-column gap-1">
+                    <span class="font-bold text-lg">{{ data.title }}</span>
+                    <span v-if="data.description" class="text-sm text-secondary line-height-2" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ data.description }}</span>
+                </div>
              </template>
           </Column>
 
@@ -139,12 +145,61 @@
             <InputText id="title" v-model="newGift.title" placeholder="Örn: 1 Adet Filtre Kahve" class="w-full" size="large" />
           </span>
         </div>
+        
+        <div class="field">
+            <label for="description" class="font-bold mb-2 block">Açıklama</label>
+            <Textarea 
+                id="description" 
+                v-model="newGift.description" 
+                rows="3" 
+                placeholder="Örn: Orta boy sıcak veya soğuk filtre kahve seçeneği..." 
+                class="w-full" 
+            />
+        </div>
+
         <div class="field">
           <label for="pointCost" class="font-bold mb-2 block">Puan Değeri</label>
           <span class="p-input-icon-left w-full">
             <i class="pi pi-star" />
             <InputNumber id="pointCost" v-model="newGift.pointCost" placeholder="Örn: 150" class="w-full" size="large" inputClass="pl-5" />
           </span>
+        </div>
+
+        <div class="field">
+            <label class="font-bold mb-2 block">Hediye Görseli</label>
+            <div 
+                class="border-2 border-dashed border-round-xl p-4 text-center cursor-pointer transition-colors duration-200"
+                :class="newGift.imageFile ? 'border-primary surface-ground' : 'surface-border hover:surface-hover'"
+                @click="triggerFileInput"
+            >
+                <input 
+                    type="file" 
+                    ref="fileInput" 
+                    accept="image/*" 
+                    class="hidden" 
+                    @change="handleFileChange" 
+                />
+                <template v-if="newGift.imageFile">
+                    <div class="flex flex-column align-items-center gap-2">
+                        <i class="pi pi-image text-3xl text-primary"></i>
+                        <span class="font-medium text-primary">{{ newGift.imageFile.name }}</span>
+                        <span class="text-sm text-secondary">Değiştirmek için tıklayın</span>
+                    </div>
+                </template>
+                <template v-else-if="newGift.imageUrl">
+                    <div class="flex flex-column align-items-center gap-2">
+                        <img :src="getApiUrl(newGift.imageUrl)" alt="Mevcut Görsel" class="h-4rem w-auto border-round shadow-1 object-cover" @error="handleImageError" />
+                        <span class="text-sm text-secondary">Görseli değiştirmek için tıklayın</span>
+                    </div>
+                </template>
+                <template v-else>
+                    <i class="pi pi-upload text-3xl text-secondary mb-2"></i>
+                    <p class="m-0 text-secondary">Görsel seçmek için tıklayın veya sürükleyin (Max 5MB)</p>
+                </template>
+            </div>
+            <small v-if="newGift.imageFile" class="text-primary block mt-2 text-right cursor-pointer hover:underline" @click="clearImage">
+                Görseli Kaldır
+            </small>
         </div>
       </div>
 
@@ -182,6 +237,8 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import Textarea from 'primevue/textarea';
+import { ref } from 'vue';
 
 // API Helper
 const API_URL = import.meta.env.VITE_API_URL || 'https://counpaign.com/api';
@@ -210,12 +267,13 @@ const api = {
 
 export default defineComponent({
   name: 'GiftsView',
-  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog, DataTable, Column },
+  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog, DataTable, Column, Textarea },
   setup() {
     const authStore = useAuthStore();
     const toast = useToast();
     const confirm = useConfirm();
-    return { authStore, toast, confirm };
+    const fileInput = ref<HTMLInputElement | null>(null);
+    return { authStore, toast, confirm, fileInput };
   },
   data() {
     return {
@@ -224,7 +282,13 @@ export default defineComponent({
       
       showAddModal: false,
       editingId: null as string | null,
-      newGift: { title: '', pointCost: null },
+      newGift: { 
+          title: '', 
+          pointCost: null, 
+          description: '', 
+          imageFile: null as File | null,
+          imageUrl: '' 
+      },
       submitting: false,
       
       filters: {
@@ -250,41 +314,118 @@ export default defineComponent({
 
     openEditModal(gift: any) {
       this.editingId = gift._id;
-      this.newGift = { title: gift.title, pointCost: gift.pointCost };
+      this.newGift = { 
+          title: gift.title, 
+          pointCost: gift.pointCost, 
+          description: gift.description || '',
+          imageFile: null,
+          imageUrl: gift.image || ''
+      };
       this.showAddModal = true;
     },
 
     resetModal() {
       this.showAddModal = false;
       this.editingId = null;
-      this.newGift = { title: '', pointCost: null };
+      this.newGift = { title: '', pointCost: null, description: '', imageFile: null, imageUrl: '' };
+      if (this.fileInput) {
+          this.fileInput.value = '';
+      }
+    },
+
+    triggerFileInput() {
+      this.fileInput?.click();
+    },
+
+    handleFileChange(event: Event) {
+      const target = event.target as HTMLInputElement;
+      if (target.files && target.files[0]) {
+          const file = target.files[0];
+          // Max 5MB Validation
+          if (file.size > 5 * 1024 * 1024) {
+              this.toast.add({ severity: 'error', summary: 'Dosya Çok Büyük', detail: 'Maksimum dosya boyutu 5MB olmalıdır.', life: 3000 });
+              return;
+          }
+          this.newGift.imageFile = file;
+          this.newGift.imageUrl = '';
+      }
+    },
+
+    clearImage() {
+        this.newGift.imageFile = null;
+        if (this.fileInput) {
+            this.fileInput.value = '';
+        }
+    },
+    
+    getApiUrl(path: string | null) {
+        if (!path) return '';
+        if (path.startsWith('http')) return path;
+        const baseUrl = API_URL.replace('/api', '');
+        return `${baseUrl}${path}`;
+    },
+
+    handleImageError(e: Event) {
+        const target = e.target as HTMLImageElement;
+        // Optionally inject a fallback generic 1x1 transparent image or icon
+        target.style.display = 'none';
+        if (target.parentElement) {
+            target.parentElement.innerHTML = '<i class="pi pi-image text-primary text-xl"></i>';
+        }
     },
 
     async saveGift() {
       if (!this.newGift.title || !this.newGift.pointCost) return;
       
       this.submitting = true;
-      const payload = { ...this.newGift };
 
       try {
+        const formData = new FormData();
+        formData.append('title', this.newGift.title);
+        formData.append('pointCost', this.newGift.pointCost.toString());
+        if (this.newGift.description) {
+            formData.append('description', this.newGift.description);
+        }
+        if (this.newGift.imageFile) {
+            formData.append('image', this.newGift.imageFile);
+        }
+
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         if (this.editingId) {
           // UPDATE
-          const res = await api.put(`/gifts/${this.editingId}`, payload);
+          const res = await fetch(`${API_URL}/gifts/${this.editingId}`, {
+             method: 'PUT',
+             headers,
+             body: formData
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Güncelleme başarısız');
+
           const index = this.gifts.findIndex(g => g._id === this.editingId);
           if (index !== -1) {
-            this.gifts[index] = res.data;
+            this.gifts[index] = data;
           }
           this.toast.add({ severity: 'success', summary: 'Güncellendi', detail: 'Hediye başarıyla güncellendi', life: 3000 });
         } else {
           // CREATE
-          const res = await api.post('/gifts', payload);
-          this.gifts.unshift(res.data);
+          const res = await fetch(`${API_URL}/gifts`, {
+             method: 'POST',
+             headers,
+             body: formData
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Oluşturma başarısız');
+
+          this.gifts.unshift(data);
           this.toast.add({ severity: 'success', summary: 'Eklendi', detail: 'Yeni hediye eklendi', life: 3000 });
         }
         this.resetModal();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving gift:', error);
-        this.toast.add({ severity: 'error', summary: 'Hata', detail: 'İşlem başarısız oldu.', life: 3000 });
+        this.toast.add({ severity: 'error', summary: 'Hata', detail: error.message || 'İşlem başarısız oldu.', life: 3000 });
       } finally {
         this.submitting = false;
       }
