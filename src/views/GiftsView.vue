@@ -284,7 +284,7 @@ export default defineComponent({
       editingId: null as string | null,
       newGift: { 
           title: '', 
-          pointCost: null, 
+          pointCost: null as number | null, 
           description: '', 
           imageFile: null as File | null,
           imageUrl: '' 
@@ -327,7 +327,7 @@ export default defineComponent({
     resetModal() {
       this.showAddModal = false;
       this.editingId = null;
-      this.newGift = { title: '', pointCost: null, description: '', imageFile: null, imageUrl: '' };
+      this.newGift = { title: '', pointCost: null as number | null, description: '', imageFile: null, imageUrl: '' };
       if (this.fileInput) {
           this.fileInput.value = '';
       }
