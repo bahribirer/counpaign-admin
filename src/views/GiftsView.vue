@@ -166,6 +166,11 @@
         </div>
 
         <div class="field">
+          <label for="category" class="font-bold mb-2 block">Kategori</label>
+          <Select id="category" v-model="newGift.category" :options="categories" placeholder="Seçiniz" class="w-full" size="large" />
+        </div>
+
+        <div class="field">
             <label class="font-bold mb-2 block">Hediye Görseli</label>
             <div 
                 class="border-2 border-dashed border-round-xl p-4 text-center cursor-pointer transition-colors duration-200"
@@ -238,6 +243,7 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Textarea from 'primevue/textarea';
+import Select from 'primevue/select';
 import { ref } from 'vue';
 
 // API Helper
@@ -267,7 +273,7 @@ const api = {
 
 export default defineComponent({
   name: 'GiftsView',
-  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog, DataTable, Column, Textarea },
+  components: { Button, Dialog, InputText, InputNumber, Toast, ConfirmDialog, DataTable, Column, Textarea, Select },
   setup() {
     const authStore = useAuthStore();
     const toast = useToast();
@@ -282,10 +288,12 @@ export default defineComponent({
       
       showAddModal: false,
       editingId: null as string | null,
+      categories: ['Sıcak Kahveler', 'Soğuk Kahveler', 'Sıcak İçecekler', 'Soğuk İçecekler', 'Tatlılar'],
       newGift: { 
           title: '', 
           pointCost: null as number | null, 
           description: '', 
+          category: 'Sıcak Kahveler',
           imageFile: null as File | null,
           imageUrl: '' 
       },
@@ -318,6 +326,7 @@ export default defineComponent({
           title: gift.title, 
           pointCost: gift.pointCost, 
           description: gift.description || '',
+          category: gift.category || 'Sıcak Kahveler',
           imageFile: null,
           imageUrl: gift.image || ''
       };
@@ -327,7 +336,7 @@ export default defineComponent({
     resetModal() {
       this.showAddModal = false;
       this.editingId = null;
-      this.newGift = { title: '', pointCost: null as number | null, description: '', imageFile: null, imageUrl: '' };
+      this.newGift = { title: '', pointCost: null as number | null, description: '', category: 'Sıcak Kahveler', imageFile: null, imageUrl: '' };
       if (this.fileInput) {
           this.fileInput.value = '';
       }
@@ -385,6 +394,9 @@ export default defineComponent({
         formData.append('pointCost', this.newGift.pointCost.toString());
         if (this.newGift.description) {
             formData.append('description', this.newGift.description);
+        }
+        if (this.newGift.category) {
+            formData.append('category', this.newGift.category);
         }
         if (this.newGift.imageFile) {
             formData.append('image', this.newGift.imageFile);
