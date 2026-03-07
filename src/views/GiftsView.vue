@@ -247,7 +247,7 @@ import Select from 'primevue/select';
 import { ref } from 'vue';
 
 // API Helper
-const API_URL = import.meta.env.VITE_API_URL || 'https://counpaign.com/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const api = {
   async request(method: string, endpoint: string, body: any = null) {

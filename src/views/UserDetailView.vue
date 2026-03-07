@@ -43,6 +43,7 @@ const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 const userId = route.params.id as string;
+const API_URL = import.meta.env.VITE_API_URL;
 
 const user = ref<User | null>(null);
 const cafes = ref<WalletCafe[]>([]);
@@ -71,8 +72,8 @@ const fetchUserData = async () => {
         }
 
         const [userRes, cafesRes] = await Promise.all([
-            fetch(`https://counpaign.com/api/users/${userId}`, { headers }),
-            fetch(`https://counpaign.com/api/users/${userId}/cafes`, { headers })
+            fetch(`${API_URL}/users/${userId}`, { headers }),
+            fetch(`${API_URL}/users/${userId}/cafes`, { headers })
         ]);
 
         if (!userRes.ok || !cafesRes.ok) throw new Error('Failed to fetch data');
@@ -99,7 +100,7 @@ const onCellEditComplete = async (event: any) => {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`https://counpaign.com/api/users/${userId}/wallet/${data._id}`, {
+        const response = await fetch(`${API_URL}/users/${userId}/wallet/${data._id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({
@@ -150,7 +151,7 @@ const deleteWalletRecord = async (recordId: string) => {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`https://counpaign.com/api/users/${userId}/wallet/${recordId}`, {
+        const response = await fetch(`${API_URL}/users/${userId}/wallet/${recordId}`, {
             method: 'DELETE',
             headers
         });

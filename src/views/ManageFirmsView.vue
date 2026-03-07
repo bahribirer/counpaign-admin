@@ -36,6 +36,8 @@ const sendingNotification = ref(false);
 import Textarea from 'primevue/textarea';
 import QRCode from 'qrcode';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 // QR State
 const qrDialog = ref(false);
 const qrDataUrl = ref('');
@@ -60,7 +62,7 @@ const showQR = async (firm: Firm) => {
 const generateQR = async (firm: Firm) => {
     generatingQR.value = firm._id;
     try {
-        const response = await fetch(`https://counpaign.com/api/firms/${firm._id}/generate-qr`, {
+        const response = await fetch(`${API_URL}/firms/${firm._id}/generate-qr`, {
             method: 'POST'
         });
         const data = await response.json();
@@ -91,7 +93,7 @@ const generateQR = async (firm: Firm) => {
 const fetchFirms = async () => {
     loading.value = true;
     try {
-        const response = await fetch('https://counpaign.com/api/firms');
+        const response = await fetch(`${API_URL}/firms`);
         if (!response.ok) throw new Error('Failed to fetch firms');
         firms.value = await response.json();
     } catch (error) {
@@ -120,7 +122,7 @@ const sendBulkNotification = async () => {
         const token = localStorage.getItem('token');
         const businessIds = selectedFirms.value.map(f => f._id);
 
-        const response = await fetch('https://counpaign.com/api/notifications/send-business', {
+        const response = await fetch(`${API_URL}/notifications/send-business`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -157,7 +159,7 @@ const deleteFirm = async () => {
 
     deleting.value = true;
     try {
-        const response = await fetch(`https://counpaign.com/api/firms/${firmToDelete.value._id}`, {
+        const response = await fetch(`${API_URL}/firms/${firmToDelete.value._id}`, {
             method: 'DELETE'
         });
 

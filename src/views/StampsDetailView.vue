@@ -11,6 +11,7 @@ interface StampTransaction {
     customerName: string;
     customerPhone: string;
     stamps: number;
+    points?: number;
     campaign: string;
     status: string;
     date: string;
@@ -18,6 +19,7 @@ interface StampTransaction {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<StampTransaction[]>([]);
 const isLoading = ref(true);
 const totalStamps = ref(0);
@@ -26,7 +28,10 @@ const fetchData = async () => {
     if (!authStore.user?.businessId) return;
     isLoading.value = true;
     try {
-        const response = await fetch(`https://counpaign.com/api/dashboard/stamps-details?businessId=${authStore.user.businessId}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/dashboard/stamps-details?businessId=${authStore.user.businessId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) return;
         const data = await response.json();
         transactions.value = data;

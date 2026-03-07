@@ -7,4 +7,20 @@ export default defineConfig({
   esbuild: {
     pure: ['console.log', 'console.debug', 'console.info'],
   },
+  server: {
+    port: 5173,
+    host: true, // ağ üzerinden erişim için (aynı ağdaki telefon/tablet testi)
+    proxy: {
+      '/api': {
+        target: 'https://counpaign.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/uploads': {
+        target: 'https://counpaign.com',
+        changeOrigin: true,
+        secure: true,
+      }
+    }
+  },
 })

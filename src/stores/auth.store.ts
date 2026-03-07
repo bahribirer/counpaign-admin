@@ -24,7 +24,6 @@ export const useAuthStore = defineStore('auth', () => {
 
         try {
             const loggedUser = await AuthService.login(username, password);
-            console.log('LOGIN DEBUG: Received User:', loggedUser);
 
             if (loggedUser.role === 'business' && !loggedUser.businessId) {
                 console.error('CRITICAL: Business user missing businessId!');

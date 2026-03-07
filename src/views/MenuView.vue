@@ -203,7 +203,7 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 
 // Use same API URL logic as main app
-const API_URL = import.meta.env.VITE_API_URL || 'https://counpaign.com/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default defineComponent({
   name: 'MenuView',

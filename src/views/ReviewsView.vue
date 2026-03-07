@@ -29,6 +29,7 @@ interface Review {
 
 const authStore = useAuthStore();
 const toast = useToast();
+const API_URL = import.meta.env.VITE_API_URL;
 const reviews = ref<Review[]>([]);
 const loading = ref(true);
 const deleteDialog = ref(false);
@@ -40,9 +41,9 @@ const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin');
 const fetchReviews = async () => {
     loading.value = true;
     try {
-        const url = isSuperAdmin.value 
-            ? 'https://counpaign.com/api/reviews/all' 
-            : 'https://counpaign.com/api/reviews/my-business';
+        const url = isSuperAdmin.value
+            ? `${API_URL}/reviews/all`
+            : `${API_URL}/reviews/my-business`;
             
         const token = localStorage.getItem('token');
         const response = await fetch(url, {
@@ -69,7 +70,7 @@ const deleteReview = async () => {
     deleting.value = true;
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`https://counpaign.com/api/reviews/${reviewToDelete.value._id}`, {
+        const response = await fetch(`${API_URL}/reviews/${reviewToDelete.value._id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -139,7 +140,7 @@ onMounted(fetchReviews);
                     <template #body="{ data }">
                         <div class="flex align-items-center gap-3">
                             <div v-if="!data.isAnonymous && data.customer?.profileImage" class="w-2rem h-2rem border-circle overflow-hidden">
-                                <img :src="`https://counpaign.com${data.customer.profileImage}`" class="w-full h-full object-cover">
+                                <img :src="data.customer.profileImage" class="w-full h-full object-cover">
                             </div>
                             <div v-else class="w-2rem h-2rem border-circle bg-gray-200 flex align-items-center justify-content-center text-gray-500">
                                 <i class="pi pi-user"></i>

@@ -11,12 +11,14 @@ interface StampTransaction {
     customerName: string;
     customerPhone: string;
     stamps: number;
+    points?: number;
     campaign: string;
     status: string;
     date: string;
 }
 
 const router = useRouter();
+const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<StampTransaction[]>([]);
 const isLoading = ref(true);
 const totalStamps = ref(0);
@@ -24,7 +26,10 @@ const totalStamps = ref(0);
 const fetchData = async () => {
     isLoading.value = true;
     try {
-        const response = await fetch('https://counpaign.com/api/dashboard/admin/stamps-details');
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/dashboard/admin/stamps-details`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) return;
         const data = await response.json();
         transactions.value = data;

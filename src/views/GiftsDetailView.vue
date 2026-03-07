@@ -17,6 +17,7 @@ interface GiftTransaction {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<GiftTransaction[]>([]);
 const isLoading = ref(true);
 
@@ -24,7 +25,10 @@ const fetchData = async () => {
     if (!authStore.user?.businessId) return;
     isLoading.value = true;
     try {
-        const response = await fetch(`https://counpaign.com/api/dashboard/gifts-details?businessId=${authStore.user.businessId}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/dashboard/gifts-details?businessId=${authStore.user.businessId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) return;
         const data = await response.json();
         transactions.value = data;

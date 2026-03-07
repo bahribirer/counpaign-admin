@@ -18,6 +18,7 @@ interface PointTransaction {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<PointTransaction[]>([]);
 const isLoading = ref(true);
 const totalPoints = ref(0);
@@ -26,7 +27,10 @@ const fetchData = async () => {
     if (!authStore.user?.businessId) return;
     isLoading.value = true;
     try {
-        const response = await fetch(`https://counpaign.com/api/dashboard/points-details?businessId=${authStore.user.businessId}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/dashboard/points-details?businessId=${authStore.user.businessId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) return;
         const data = await response.json();
         transactions.value = data;

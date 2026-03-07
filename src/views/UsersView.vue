@@ -37,6 +37,7 @@ interface Firm {
 const router = useRouter();
 const authStore = useAuthStore();
 const toast = useToast();
+const API_URL = import.meta.env.VITE_API_URL;
 const users = ref<User[]>([]);
 const firms = ref<Firm[]>([]);
 
@@ -63,7 +64,7 @@ const titleOptions = computed(() => {
 
 const fetchFirms = async () => {
     try {
-        const response = await fetch('https://counpaign.com/api/firms');
+        const response = await fetch(`${API_URL}/firms`);
         if (response.ok) {
             firms.value = await response.json();
         }
@@ -89,7 +90,7 @@ const sendBulkNotification = async () => {
         const token = localStorage.getItem('token');
         const userIds = selectedUsers.value.map(u => u._id);
 
-        const response = await fetch('https://counpaign.com/api/notifications/send-users', {
+        const response = await fetch(`${API_URL}/notifications/send-users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ const fetchUsers = async () => {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch('https://counpaign.com/api/users', { headers });
+        const response = await fetch(`${API_URL}/users`, { headers });
         const data = await response.json();
         
         if (!response.ok) {
@@ -164,7 +165,7 @@ const deleteUser = async () => {
             'Authorization': `Bearer ${token}`
         };
 
-        const response = await fetch(`https://counpaign.com/api/users/${userToDelete.value._id}`, {
+        const response = await fetch(`${API_URL}/users/${userToDelete.value._id}`, {
             method: 'DELETE',
             headers
         });

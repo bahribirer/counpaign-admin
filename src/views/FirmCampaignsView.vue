@@ -19,6 +19,8 @@ import Toast from 'primevue/toast';
 import { useAuthStore } from '../stores/auth.store';
 
 const API_URL = import.meta.env.VITE_API_URL;
+// BASE_URL: for static files like images (/uploads/...) served from same origin via proxy
+const BASE_URL = API_URL.replace(/\/api$/, '');
 
 interface MenuItem {
     productId: string;
@@ -344,7 +346,7 @@ const saveCampaign = async () => {
 const editCampaign = (c: Campaign) => {
     campaign.value = { ...c, businessId: businessId.value! };
     editing.value = true;
-    previewUrl.value = c.headerImage ? `${API_URL.replace('/api', '')}${c.headerImage}` : null;
+    previewUrl.value = c.headerImage ? `${BASE_URL}${c.headerImage}` : null;
     selectedFile.value = null;
     
     // Restore selected products from menuItems
@@ -427,7 +429,7 @@ onMounted(async () => {
 
                 <Column header="Görsel" style="width: 100px">
                     <template #body="{ data }">
-                        <img v-if="data.headerImage" :src="`${API_URL.replace('/api', '')}${data.headerImage}`" class="w-4rem h-3rem border-round object-cover" />
+                        <img v-if="data.headerImage" :src="`${BASE_URL}${data.headerImage}`" class="w-4rem h-3rem border-round object-cover" />
                         <div v-else class="w-4rem h-3rem bg-gray-200 border-round flex align-items-center justify-content-center">
                             <i class="pi pi-image text-gray-400"></i>
                         </div>

@@ -214,6 +214,7 @@ import QRCode from 'qrcode';
 import { getDistrictNames, getNeighborhoods } from '../data/locations';
 
 const router = useRouter();
+const API_URL = import.meta.env.VITE_API_URL;
 
 const formData = ref({
     name: '',
@@ -334,7 +335,7 @@ const handleSubmit = async () => {
             submitData.append('logo', formData.value.settings.logo);
         }
 
-        const response = await fetch('https://counpaign.com/api/firms', {
+        const response = await fetch(`${API_URL}/firms`, {
             method: 'POST',
             body: submitData,
         });

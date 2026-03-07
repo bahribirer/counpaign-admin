@@ -17,6 +17,7 @@ interface PointTransaction {
 }
 
 const router = useRouter();
+const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<PointTransaction[]>([]);
 const isLoading = ref(true);
 const totalPoints = ref(0);
@@ -24,7 +25,10 @@ const totalPoints = ref(0);
 const fetchData = async () => {
     isLoading.value = true;
     try {
-        const response = await fetch('https://counpaign.com/api/dashboard/admin/points-details');
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/dashboard/admin/points-details`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) return;
         const data = await response.json();
         transactions.value = data;
