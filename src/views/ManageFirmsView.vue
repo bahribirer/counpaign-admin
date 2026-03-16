@@ -248,26 +248,45 @@ const saveFirmEdit = async () => {
     saving.value = true;
     try {
         const token = localStorage.getItem('token');
-        const submitData = new FormData();
-        submitData.append('name', editForm.value.companyName);
-        submitData.append('email', editForm.value.email);
-        submitData.append('settings', JSON.stringify({
-            category: editForm.value.category,
-            cardColor: editForm.value.cardColor,
-            city: 'Ankara',
-            district: editForm.value.district,
-            neighborhood: editForm.value.neighborhood,
-            stampsTarget: editForm.value.stampsTarget
-        }));
-        if (editForm.value.logo) {
-            submitData.append('logo', editForm.value.logo);
-        }
 
-        const response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: submitData
-        });
+        // If logo is being changed, use FormData
+        if (editForm.value.logo) {
+            const submitData = new FormData();
+            submitData.append('companyName', editForm.value.companyName);
+            submitData.append('email', editForm.value.email);
+            submitData.append('category', editForm.value.category);
+            submitData.append('cardColor', editForm.value.cardColor);
+            submitData.append('city', 'Ankara');
+            submitData.append('district', editForm.value.district);
+            submitData.append('neighborhood', editForm.value.neighborhood);
+            submitData.append('settings', JSON.stringify({ stampsTarget: editForm.value.stampsTarget }));
+            submitData.append('logo', editForm.value.logo);
+
+            var response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: submitData
+            });
+        } else {
+            // No logo change, send JSON
+            var response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    companyName: editForm.value.companyName,
+                    email: editForm.value.email,
+                    category: editForm.value.category,
+                    cardColor: editForm.value.cardColor,
+                    city: 'Ankara',
+                    district: editForm.value.district,
+                    neighborhood: editForm.value.neighborhood,
+                    settings: { stampsTarget: editForm.value.stampsTarget }
+                })
+            });
+        }
 
         if (!response.ok) {
             const errData = await response.json();
