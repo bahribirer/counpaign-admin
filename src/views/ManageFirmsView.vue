@@ -20,12 +20,19 @@ interface Firm {
     email: string;
     category: string;
     cardColor: string;
+    cardIcon: string;
     city: string;
     district: string;
     neighborhood: string;
     staticQR: string | null;
     createdAt: string;
-    stampsTarget?: number;
+    logo: string | null;
+    settings?: {
+        stampsTarget?: number;
+        pointsPerVisit?: number;
+        redemptionThreshold?: number;
+        pointsPercentage?: number;
+    };
 }
 
 const toast = useToast();
@@ -53,8 +60,10 @@ const editingFirm = ref<Firm | null>(null);
 const editForm = ref({
     companyName: '',
     email: '',
+    password: '',
     category: '',
     cardColor: '',
+    cardIcon: '',
     district: '',
     neighborhood: '',
     stampsTarget: 6,
@@ -189,11 +198,13 @@ const openEditDialog = (firm: Firm) => {
     editForm.value = {
         companyName: firm.companyName,
         email: firm.email,
+        password: '',
         category: firm.category || 'Kafe',
         cardColor: firm.cardColor || '#EE2C2C',
+        cardIcon: firm.cardIcon || 'local_cafe_rounded',
         district: firm.district || '',
         neighborhood: firm.neighborhood || '',
-        stampsTarget: firm.stampsTarget || 6,
+        stampsTarget: firm.settings?.stampsTarget || 6,
         logo: null
     };
     editNeighborhoods.value = firm.district ? getNeighborhoods(firm.district) : [];
@@ -250,16 +261,21 @@ const saveFirmEdit = async () => {
         const token = localStorage.getItem('token');
         let response: Response;
 
-        const bodyData = {
+        const bodyData: Record<string, any> = {
             companyName: editForm.value.companyName,
             email: editForm.value.email,
             category: editForm.value.category,
             cardColor: editForm.value.cardColor,
+            cardIcon: editForm.value.cardIcon,
             city: 'Ankara',
             district: editForm.value.district,
             neighborhood: editForm.value.neighborhood,
             settings: { stampsTarget: editForm.value.stampsTarget }
         };
+        // Only send password if changed
+        if (editForm.value.password.trim()) {
+            bodyData.password = editForm.value.password;
+        }
 
         // If logo is being changed, use FormData
         if (editForm.value.logo) {
@@ -531,28 +547,64 @@ onMounted(() => {
         <!-- Edit Firm Dialog (Super Admin Only) -->
         <Dialog
             v-model:visible="editDialog"
-            :style="{ width: '550px' }"
+            :style="{ width: '600px' }"
             header="Firma Düzenle"
             :modal="true"
             class="edit-dialog"
         >
             <div class="flex flex-column gap-3 p-2">
+                <!-- Temel Bilgiler -->
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Temel Bilgiler</h3>
+
                 <div class="flex flex-column gap-2">
-                    <label class="font-bold">Firma İsmi</label>
-                    <InputText v-model="editForm.companyName" placeholder="Firma adı" />
+                    <label class="font-bold">Firma İsmi *</label>
+                    <InputText v-model="editForm.companyName" placeholder="Örn: Kahve Diyarı" />
                 </div>
 
                 <div class="flex flex-column gap-2">
-                    <label class="font-bold">E-posta</label>
-                    <InputText v-model="editForm.email" type="email" placeholder="E-posta" />
+                    <label class="font-bold">E-posta *</label>
+                    <InputText v-model="editForm.email" type="email" placeholder="info@firma.com" />
                 </div>
 
                 <div class="flex flex-column gap-2">
-                    <label class="font-bold">Firma Rengi</label>
+                    <label class="font-bold">Şifre</label>
+                    <InputText v-model="editForm.password" type="password" placeholder="Değiştirmek için yeni şifre girin" />
+                    <small class="text-secondary">Boş bırakırsanız mevcut şifre korunur</small>
+                </div>
+
+                <!-- Firma Ayarları -->
+                <h3 style="margin: 0.5rem 0 0 0; font-size: 1.1rem; font-weight: 600; border-top: 1px solid var(--surface-border); padding-top: 1rem;">Firma Ayarları</h3>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Kategori</label>
+                    <InputText v-model="editForm.category" disabled class="locked-field" />
+                    <small class="text-secondary">Bu alan kilitlidir</small>
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Logo</label>
+                    <input
+                        type="file"
+                        @change="handleEditFileChange"
+                        accept="image/*"
+                        class="file-input"
+                    />
+                    <small class="text-secondary">Değiştirmek istemiyorsanız boş bırakın (PNG, JPG)</small>
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Firma Rengi *</label>
                     <div class="flex align-items-center gap-2">
-                        <input type="color" v-model="editForm.cardColor" style="width: 50px; height: 36px; border: 1px solid var(--surface-border); border-radius: 6px; cursor: pointer;" />
+                        <input type="color" v-model="editForm.cardColor" style="width: 60px; height: 40px; border: 1px solid var(--surface-border); border-radius: 6px; cursor: pointer;" />
                         <InputText v-model="editForm.cardColor" placeholder="#FF5733" style="flex: 1;" />
                     </div>
+                    <small class="text-secondary">Kartlarda kullanılacak renk</small>
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Kart İkonu</label>
+                    <InputText v-model="editForm.cardIcon" disabled class="locked-field" />
+                    <small class="text-secondary">Bu alan kilitlidir</small>
                 </div>
 
                 <div class="flex flex-column gap-2">
@@ -568,10 +620,20 @@ onMounted(() => {
                         incrementButtonIcon="pi pi-plus"
                         decrementButtonIcon="pi pi-minus"
                     />
+                    <small class="text-secondary">Bir hediye kazanmak için gereken damga sayısı</small>
+                </div>
+
+                <!-- Konum Bilgileri -->
+                <h3 style="margin: 0.5rem 0 0 0; font-size: 1.1rem; font-weight: 600; border-top: 1px solid var(--surface-border); padding-top: 1rem;">Konum Bilgileri</h3>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Şehir</label>
+                    <InputText value="Ankara" disabled class="locked-field" />
+                    <small class="text-secondary">Bu alan kilitlidir</small>
                 </div>
 
                 <div class="flex flex-column gap-2">
-                    <label class="font-bold">İlçe</label>
+                    <label class="font-bold">İlçe *</label>
                     <Select
                         v-model="editForm.district"
                         :options="editDistricts"
@@ -581,24 +643,13 @@ onMounted(() => {
                 </div>
 
                 <div class="flex flex-column gap-2">
-                    <label class="font-bold">Semt</label>
+                    <label class="font-bold">Semt *</label>
                     <Select
                         v-model="editForm.neighborhood"
                         :options="editNeighborhoods"
-                        placeholder="Semt seçin"
+                        placeholder="Önce ilçe seçin"
                         :disabled="!editForm.district"
                     />
-                </div>
-
-                <div class="flex flex-column gap-2">
-                    <label class="font-bold">Logo Değiştir</label>
-                    <input
-                        type="file"
-                        @change="handleEditFileChange"
-                        accept="image/*"
-                        class="file-input"
-                    />
-                    <small class="text-secondary">Değiştirmek istemiyorsanız boş bırakın</small>
                 </div>
             </div>
             <template #footer>
@@ -718,6 +769,11 @@ onMounted(() => {
 :deep(.edit-dialog .p-dialog-footer) {
     background: var(--surface-card);
     border-top: 1px solid var(--surface-border);
+}
+
+.locked-field {
+    background-color: var(--surface-100) !important;
+    cursor: not-allowed;
 }
 
 .file-input {
