@@ -238,7 +238,7 @@ export default defineComponent({
         if (!path) return '';
         if (path.startsWith('http')) return path;
         // Clean double slashes just in case
-        return `${API_URL.replace('/api', '')}${path}`;
+        return `${API_URL.replace(/\/api$/, '')}${path}`;
     };
 
     const formatCurrency = (value: number) => {
