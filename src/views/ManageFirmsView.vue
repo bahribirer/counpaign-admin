@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -7,6 +7,12 @@ import Dialog from 'primevue/dialog';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import Tag from 'primevue/tag';
+import InputText from 'primevue/inputtext';
+import InputNumber from 'primevue/inputnumber';
+import Select from 'primevue/select';
+import Textarea from 'primevue/textarea';
+import QRCode from 'qrcode';
+import { getDistrictNames, getNeighborhoods } from '../data/locations';
 
 interface Firm {
     _id: string;
@@ -19,6 +25,7 @@ interface Firm {
     neighborhood: string;
     staticQR: string | null;
     createdAt: string;
+    stampsTarget?: number;
 }
 
 const toast = useToast();
@@ -28,13 +35,40 @@ const deleteDialog = ref(false);
 const firmToDelete = ref<Firm | null>(null);
 const deleting = ref(false);
 
+// Super admin check
+const isSuperAdmin = computed(() => {
+    try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            return user.role === 'super_admin';
+        }
+    } catch {}
+    return false;
+});
+
+// Edit State
+const editDialog = ref(false);
+const editingFirm = ref<Firm | null>(null);
+const editForm = ref({
+    companyName: '',
+    email: '',
+    category: '',
+    cardColor: '',
+    district: '',
+    neighborhood: '',
+    stampsTarget: 6,
+    logo: null as File | null
+});
+const editDistricts = ref(getDistrictNames());
+const editNeighborhoods = ref<string[]>([]);
+const saving = ref(false);
+
 // Notification State
 const selectedFirms = ref<Firm[]>([]);
 const notificationDialog = ref(false);
 const notificationMessage = ref('');
 const sendingNotification = ref(false);
-import Textarea from 'primevue/textarea';
-import QRCode from 'qrcode';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -146,6 +180,107 @@ const sendBulkNotification = async () => {
         toast.add({ severity: 'error', summary: 'Hata', detail: error.message || 'Bildirim gönderilemedi.', life: 3000 });
     } finally {
         sendingNotification.value = false;
+    }
+};
+
+// Edit Functions
+const openEditDialog = (firm: Firm) => {
+    editingFirm.value = firm;
+    editForm.value = {
+        companyName: firm.companyName,
+        email: firm.email,
+        category: firm.category || 'Kafe',
+        cardColor: firm.cardColor || '#EE2C2C',
+        district: firm.district || '',
+        neighborhood: firm.neighborhood || '',
+        stampsTarget: firm.stampsTarget || 6,
+        logo: null
+    };
+    editNeighborhoods.value = firm.district ? getNeighborhoods(firm.district) : [];
+    editDialog.value = true;
+};
+
+const onEditDistrictChange = () => {
+    editForm.value.neighborhood = '';
+    editNeighborhoods.value = getNeighborhoods(editForm.value.district);
+};
+
+const handleEditFileChange = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files[0]) {
+        try {
+            const compressedFile = await compressImage(target.files[0]);
+            editForm.value.logo = compressedFile;
+        } catch (e) {
+            toast.add({ severity: 'error', summary: 'Hata', detail: 'Resim işlenirken hata oluştu', life: 3000 });
+        }
+    }
+};
+
+const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 800;
+                let width = img.width, height = img.height;
+                if (width > height) { if (width > MAX) { height *= MAX / width; width = MAX; } }
+                else { if (height > MAX) { width *= MAX / height; height = MAX; } }
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
+                    else reject(new Error('Blob failed'));
+                }, 'image/jpeg', 0.7);
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
+};
+
+const saveFirmEdit = async () => {
+    if (!editingFirm.value) return;
+    saving.value = true;
+    try {
+        const token = localStorage.getItem('token');
+        const submitData = new FormData();
+        submitData.append('name', editForm.value.companyName);
+        submitData.append('email', editForm.value.email);
+        submitData.append('settings', JSON.stringify({
+            category: editForm.value.category,
+            cardColor: editForm.value.cardColor,
+            city: 'Ankara',
+            district: editForm.value.district,
+            neighborhood: editForm.value.neighborhood,
+            stampsTarget: editForm.value.stampsTarget
+        }));
+        if (editForm.value.logo) {
+            submitData.append('logo', editForm.value.logo);
+        }
+
+        const response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: submitData
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || 'Firma güncellenemedi');
+        }
+
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: `${editForm.value.companyName} güncellendi`, life: 3000 });
+        editDialog.value = false;
+        await fetchFirms(); // Refresh list
+    } catch (error: any) {
+        toast.add({ severity: 'error', summary: 'Hata', detail: error.message, life: 3000 });
+    } finally {
+        saving.value = false;
     }
 };
 
@@ -298,14 +433,23 @@ onMounted(() => {
                     </template>
                 </Column>
 
-                <Column header="İşlemler" style="min-width: 100px">
+                <Column header="İşlemler" style="min-width: 140px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button 
-                                icon="pi pi-trash" 
-                                severity="danger" 
-                                text 
-                                rounded 
+                            <Button
+                                v-if="isSuperAdmin"
+                                icon="pi pi-pencil"
+                                severity="info"
+                                text
+                                rounded
+                                @click="openEditDialog(data)"
+                                v-tooltip.top="'Firmayı Düzenle'"
+                            />
+                            <Button
+                                icon="pi pi-trash"
+                                severity="danger"
+                                text
+                                rounded
                                 @click="confirmDelete(data)"
                                 v-tooltip.top="'Firmayı Sil'"
                             />
@@ -364,6 +508,85 @@ onMounted(() => {
             <template #footer>
                 <Button label="İptal" icon="pi pi-times" text @click="notificationDialog = false" :disabled="sendingNotification" />
                 <Button label="Gönder" icon="pi pi-send" severity="warning" @click="sendBulkNotification" :loading="sendingNotification" />
+            </template>
+        </Dialog>
+
+        <!-- Edit Firm Dialog (Super Admin Only) -->
+        <Dialog
+            v-model:visible="editDialog"
+            :style="{ width: '550px' }"
+            header="Firma Düzenle"
+            :modal="true"
+            class="edit-dialog"
+        >
+            <div class="flex flex-column gap-3 p-2">
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Firma İsmi</label>
+                    <InputText v-model="editForm.companyName" placeholder="Firma adı" />
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">E-posta</label>
+                    <InputText v-model="editForm.email" type="email" placeholder="E-posta" />
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Firma Rengi</label>
+                    <div class="flex align-items-center gap-2">
+                        <input type="color" v-model="editForm.cardColor" style="width: 50px; height: 36px; border: 1px solid var(--surface-border); border-radius: 6px; cursor: pointer;" />
+                        <InputText v-model="editForm.cardColor" placeholder="#FF5733" style="flex: 1;" />
+                    </div>
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Hediye İçin Damga Sayısı</label>
+                    <InputNumber
+                        v-model="editForm.stampsTarget"
+                        showButtons
+                        buttonLayout="horizontal"
+                        :min="1"
+                        :max="20"
+                        decrementButtonClass="p-button-secondary"
+                        incrementButtonClass="p-button-secondary"
+                        incrementButtonIcon="pi pi-plus"
+                        decrementButtonIcon="pi pi-minus"
+                    />
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">İlçe</label>
+                    <Select
+                        v-model="editForm.district"
+                        :options="editDistricts"
+                        placeholder="İlçe seçin"
+                        @change="onEditDistrictChange"
+                    />
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Semt</label>
+                    <Select
+                        v-model="editForm.neighborhood"
+                        :options="editNeighborhoods"
+                        placeholder="Semt seçin"
+                        :disabled="!editForm.district"
+                    />
+                </div>
+
+                <div class="flex flex-column gap-2">
+                    <label class="font-bold">Logo Değiştir</label>
+                    <input
+                        type="file"
+                        @change="handleEditFileChange"
+                        accept="image/*"
+                        class="file-input"
+                    />
+                    <small class="text-secondary">Değiştirmek istemiyorsanız boş bırakın</small>
+                </div>
+            </div>
+            <template #footer>
+                <Button label="İptal" icon="pi pi-times" text @click="editDialog = false" :disabled="saving" />
+                <Button label="Kaydet" icon="pi pi-check" severity="success" @click="saveFirmEdit" :loading="saving" />
             </template>
         </Dialog>
 
@@ -468,5 +691,28 @@ onMounted(() => {
 :deep(.delete-dialog .p-dialog-footer) {
     background: var(--surface-card);
     border-top: 1px solid var(--surface-border);
+}
+
+:deep(.edit-dialog .p-dialog-header) {
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+:deep(.edit-dialog .p-dialog-footer) {
+    background: var(--surface-card);
+    border-top: 1px solid var(--surface-border);
+}
+
+.file-input {
+    padding: 0.75rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    background: var(--surface-card);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.file-input:hover {
+    border-color: var(--primary-color);
 }
 </style>
