@@ -248,43 +248,41 @@ const saveFirmEdit = async () => {
     saving.value = true;
     try {
         const token = localStorage.getItem('token');
+        let response: Response;
+
+        const bodyData = {
+            companyName: editForm.value.companyName,
+            email: editForm.value.email,
+            category: editForm.value.category,
+            cardColor: editForm.value.cardColor,
+            city: 'Ankara',
+            district: editForm.value.district,
+            neighborhood: editForm.value.neighborhood,
+            settings: { stampsTarget: editForm.value.stampsTarget }
+        };
 
         // If logo is being changed, use FormData
         if (editForm.value.logo) {
             const submitData = new FormData();
-            submitData.append('companyName', editForm.value.companyName);
-            submitData.append('email', editForm.value.email);
-            submitData.append('category', editForm.value.category);
-            submitData.append('cardColor', editForm.value.cardColor);
-            submitData.append('city', 'Ankara');
-            submitData.append('district', editForm.value.district);
-            submitData.append('neighborhood', editForm.value.neighborhood);
-            submitData.append('settings', JSON.stringify({ stampsTarget: editForm.value.stampsTarget }));
+            Object.entries(bodyData).forEach(([key, val]) => {
+                submitData.append(key, typeof val === 'object' ? JSON.stringify(val) : String(val));
+            });
             submitData.append('logo', editForm.value.logo);
 
-            var response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
+            response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: submitData
             });
         } else {
             // No logo change, send JSON
-            var response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
+            response = await fetch(`${API_URL}/firms/${editingFirm.value._id}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    companyName: editForm.value.companyName,
-                    email: editForm.value.email,
-                    category: editForm.value.category,
-                    cardColor: editForm.value.cardColor,
-                    city: 'Ankara',
-                    district: editForm.value.district,
-                    neighborhood: editForm.value.neighborhood,
-                    settings: { stampsTarget: editForm.value.stampsTarget }
-                })
+                body: JSON.stringify(bodyData)
             });
         }
 
