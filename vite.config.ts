@@ -12,12 +12,12 @@ export default defineConfig({
     host: true, // ağ üzerinden erişim için (aynı ağdaki telefon/tablet testi)
     proxy: {
       '/api': {
-        target: 'https://counpaign.com',
+        target: 'https://api.counpaign.com',
         changeOrigin: true,
         secure: true,
       },
       '/uploads': {
-        target: 'https://counpaign.com',
+        target: 'https://api.counpaign.com',
         changeOrigin: true,
         secure: true,
       }
