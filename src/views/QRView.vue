@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
@@ -13,6 +14,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const toast = useToast();
 const authStore = useAuthStore();
+const router = useRouter();
+let pollingErrorCount = 0;
 const qrDataUrl = ref('');
 const loading = ref(true);
 const staticQRToken = ref('');
@@ -122,6 +125,27 @@ const startStaticPolling = () => {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
+
+            // 401 = token expired → logout and redirect to login
+            if (response.status === 401) {
+                console.warn('poll-static 401: token expired, redirecting to login');
+                stopPolling();
+                authStore.logout();
+                router.push('/login');
+                return;
+            }
+
+            if (!response.ok) {
+                pollingErrorCount++;
+                if (pollingErrorCount >= 5) {
+                    console.error('poll-static repeated errors:', response.status);
+                    toast.add({ severity: 'warn', summary: 'Bağlantı Sorunu', detail: 'Tarama dinleme hatası. Sayfayı yenileyin.', life: 5000 });
+                    pollingErrorCount = 0;
+                }
+                return;
+            }
+
+            pollingErrorCount = 0;
             const data = await response.json();
 
             if (data.status === 'scanned') {
