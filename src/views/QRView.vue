@@ -29,6 +29,7 @@ const stampCount = ref<number>(1);
 const purchaseAmount = ref<number>(0);
 const confirming = ref(false);
 const qrTokenId = ref('');
+const pollToken = ref('');
 const noQR = ref(false);
 const generatingQR = ref(false);
 let statusPollingInterval: number | null = null;
@@ -120,6 +121,24 @@ const startStaticPolling = () => {
         if (showEntryDialog.value || showGiftDialog.value) return;
 
         try {
+            // Dialog açıkken mevcut token'ın müşteri tarafından iptal edilip edilmediğini kontrol et
+            if ((showEntryDialog.value || showGiftDialog.value) && pollToken.value) {
+                const statusRes = await fetch(`${API_URL}/qr/status/${pollToken.value}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+                    if (statusData.status === 'cancelled') {
+                        showEntryDialog.value = false;
+                        showGiftDialog.value = false;
+                        qrTokenId.value = '';
+                        pollToken.value = '';
+                        toast.add({ severity: 'warn', summary: 'İptal Edildi', detail: 'İşlem müşteri tarafından iptal edildi.', life: 4000 });
+                    }
+                }
+                return;
+            }
+
             const response = await fetch(`${API_URL}/qr/poll-static`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -151,6 +170,7 @@ const startStaticPolling = () => {
             if (data.status === 'scanned') {
                 customer.value = data.customer;
                 qrTokenId.value = data.qrTokenId;
+                pollToken.value = data.pollToken || '';
 
                 // Check scan type: Gift Redemption vs Normal
                 if (data.scanType === 'gift_redemption') {
