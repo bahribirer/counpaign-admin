@@ -118,8 +118,6 @@ const generateStaticQR = async () => {
 const startStaticPolling = () => {
     stopPolling();
     statusPollingInterval = window.setInterval(async () => {
-        if (showEntryDialog.value || showGiftDialog.value) return;
-
         try {
             // Dialog açıkken mevcut token'ın müşteri tarafından iptal edilip edilmediğini kontrol et
             if ((showEntryDialog.value || showGiftDialog.value) && pollToken.value) {
