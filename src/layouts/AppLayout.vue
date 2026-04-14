@@ -284,7 +284,7 @@ const pageTitle = computed(() => {
     justify-content: space-between;
     padding: 7rem 2rem 2rem 2rem;
     padding-left: 280px;
-    transition: margin-left 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Desktop: Inactive means Hidden */
@@ -298,19 +298,38 @@ const pageTitle = computed(() => {
 }
 
 @media (max-width: 991px) {
+    .layout-topbar {
+        padding: 0 1rem;
+    }
+
     .layout-sidebar {
         transform: translateX(0);
         left: 0;
-        box-shadow: 4px 0 25px rgba(62, 39, 35, 0.08);
+        top: 0;
+        height: 100vh;
+        width: 280px;
+        box-shadow: 10px 0 40px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        border-right: none;
     }
     
     .layout-main-container {
-        padding-left: 2rem;
+        padding: 6rem 1rem 1rem 1rem;
+        padding-left: 1rem;
     }
     
     .layout-static-inactive .layout-sidebar {
         transform: translateX(-100%);
         box-shadow: none;
+    }
+
+    /* Topbar adjustments for mobile */
+    .logo-text {
+        font-size: 1.4rem;
+    }
+
+    .user-profile span {
+        display: none; /* Hide username on small screens */
     }
 }
 

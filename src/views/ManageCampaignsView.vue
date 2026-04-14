@@ -43,6 +43,13 @@ const goToFirmCampaigns = (firm: Firm) => {
     router.push(`/manage-campaigns/${firm._id}`);
 };
 
+const resolveImageUrl = (path: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = API_URL.replace('/api', '');
+    return `${base}/${path}`;
+};
+
 onMounted(fetchFirms);
 </script>
 
@@ -80,7 +87,7 @@ onMounted(fetchFirms);
                 <Column field="companyName" header="İşletme Adı" sortable style="min-width: 200px">
                     <template #body="{ data }">
                         <div class="flex align-items-center gap-3">
-                            <img v-if="data.logo" :src="data.logo" class="w-2rem h-2rem border-circle object-cover" />
+                            <img v-if="data.logo" :src="resolveImageUrl(data.logo)" class="w-2rem h-2rem border-circle object-cover" />
                             <div v-else class="w-2rem h-2rem border-circle bg-primary-100 flex align-items-center justify-content-center text-primary font-bold">
                                 {{ data.companyName.charAt(0) }}
                             </div>

@@ -34,6 +34,13 @@ const noQR = ref(false);
 const generatingQR = ref(false);
 let statusPollingInterval: number | null = null;
 
+const resolveImageUrl = (path: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = API_URL.replace('/api', '');
+    return `${base}/${path}`;
+};
+
 // Computed: points to be earned from purchase
 const calculatedPoints = computed(() => {
     return Math.floor((purchaseAmount.value || 0) * 0.10);
@@ -493,7 +500,8 @@ const downloadQRAsPDF = async () => {
                 <!-- Customer Info -->
                 <div v-if="customer" class="customer-info mb-4 p-3 surface-100 border-round">
                     <div class="flex align-items-center gap-3">
-                        <i class="pi pi-user text-2xl text-primary"></i>
+                        <img v-if="customer.profileImage" :src="resolveImageUrl(customer.profileImage)" class="w-3rem h-3rem border-circle object-cover shadow-2" />
+                        <i v-else class="pi pi-user text-2xl text-primary p-3 bg-primary-50 border-round-circle"></i>
                         <div>
                             <div class="font-bold text-lg">{{ customer.name }} {{ customer.surname }}</div>
                             <div class="text-secondary text-sm">{{ customer.email }}</div>
@@ -574,7 +582,8 @@ const downloadQRAsPDF = async () => {
         <Dialog v-model:visible="showGiftDialog" header="Hediye Teslim Onayı" :style="{ width: '500px' }" modal @hide="onDialogHide">
             <div class="p-4 pt-0 text-center">
                 <div v-if="customer" class="mb-4">
-                    <i class="pi pi-user text-4xl text-primary mb-2"></i>
+                    <img v-if="customer.profileImage" :src="resolveImageUrl(customer.profileImage)" class="w-4rem h-4rem border-circle object-cover shadow-2 mb-2" />
+                    <i v-else class="pi pi-user text-4xl text-primary mb-2"></i>
                     <h2 class="text-xl font-bold m-0">{{ customer.name }} {{ customer.surname }}</h2>
                     <p class="text-secondary m-0">{{ customer.email }}</p>
                 </div>
