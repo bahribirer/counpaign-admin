@@ -346,7 +346,7 @@ export default defineComponent({
       this.fileInput?.click();
     },
 
-    handleFileChange(event: Event) {
+    async handleFileChange(event: Event) {
       const target = event.target as HTMLInputElement;
       if (target.files && target.files[0]) {
           const file = target.files[0];
@@ -355,7 +355,12 @@ export default defineComponent({
               this.toast.add({ severity: 'error', summary: 'Dosya Çok Büyük', detail: 'Maksimum dosya boyutu 5MB olmalıdır.', life: 3000 });
               return;
           }
-          this.newGift.imageFile = file;
+          try {
+              const compressedFile = await this.compressImage(file);
+              this.newGift.imageFile = compressedFile;
+          } catch (e) {
+              this.newGift.imageFile = file;
+          }
           this.newGift.imageUrl = '';
       }
     },
@@ -365,6 +370,36 @@ export default defineComponent({
         if (this.fileInput) {
             this.fileInput.value = '';
         }
+    },
+
+    compressImage(file: File): Promise<File> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX = 1200;
+                    if (width > MAX || height > MAX) {
+                        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                        else { width = Math.round(width * MAX / height); height = MAX; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+                        else reject(new Error('Canvas to Blob failed'));
+                    }, 'image/jpeg', 0.7);
+                };
+                img.onerror = reject;
+                img.src = e.target?.result as string;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     },
     
     getApiUrl(path: string | null) {

@@ -266,7 +266,37 @@ export default defineComponent({
         fileInput.value?.click();
     };
 
-    const handleFileChange = (event: Event) => {
+    const compressImage = (file: File): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX = 1200;
+                    if (width > MAX || height > MAX) {
+                        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                        else { width = Math.round(width * MAX / height); height = MAX; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+                        else reject(new Error('Canvas to Blob failed'));
+                    }, 'image/jpeg', 0.7);
+                };
+                img.onerror = reject;
+                img.src = e.target?.result as string;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleFileChange = async (event: Event) => {
         const target = event.target as HTMLInputElement;
         if (target.files && target.files[0]) {
             const file = target.files[0];
@@ -274,13 +304,18 @@ export default defineComponent({
                 toast.add({ severity: 'warn', summary: 'Dosya Çok Büyük', detail: 'Max 5MB yükleyebilirsiniz.', life: 3000 });
                 return;
             }
-            itemForm.imageFile = file;
+            try {
+                const compressedFile = await compressImage(file);
+                itemForm.imageFile = compressedFile;
+            } catch (e) {
+                itemForm.imageFile = file;
+            }
             // Create preview
             const reader = new FileReader();
             reader.onload = (e) => {
                 itemForm.imagePreview = e.target?.result as string;
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(itemForm.imageFile!);
         }
     };
 
