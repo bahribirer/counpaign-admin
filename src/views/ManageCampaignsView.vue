@@ -31,7 +31,9 @@ const fetchFirms = async () => {
     try {
         const response = await fetch(`${API_URL}/firms`);
         if (!response.ok) throw new Error('Failed to fetch firms');
-        firms.value = await response.json();
+        const data = await response.json();
+        console.log('DEBUG [ManageCampaigns]: Firms data received:', data);
+        firms.value = data;
     } catch (error) {
         console.error('Error fetching firms:', error);
     } finally {
@@ -46,9 +48,19 @@ const goToFirmCampaigns = (firm: Firm) => {
 const resolveImageUrl = (path: string | null | undefined): string | undefined => {
     if (!path) return undefined;
     if (path.startsWith('http')) return path;
+    
     const base = API_URL.replace('/api', '').replace(/\/$/, '');
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${cleanPath}`;
+    let cleanPath = path;
+    
+    if (!cleanPath.includes('/')) {
+        cleanPath = `/uploads/${cleanPath}`;
+    } else {
+        cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+    
+    const finalUrl = `${base}${cleanPath}`;
+    console.log(`DEBUG [Image Resolve]: Input="${path}" -> Output="${finalUrl}"`);
+    return finalUrl;
 };
 
 onMounted(fetchFirms);

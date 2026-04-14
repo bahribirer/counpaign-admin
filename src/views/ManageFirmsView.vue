@@ -90,8 +90,16 @@ const generatingQR = ref<string | null>(null);
 const resolveImageUrl = (path: string | null | undefined): string | undefined => {
     if (!path) return undefined;
     if (path.startsWith('http')) return path;
+    
     const base = API_URL.replace('/api', '').replace(/\/$/, '');
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    let cleanPath = path;
+    
+    if (!cleanPath.includes('/')) {
+        cleanPath = `/uploads/${cleanPath}`;
+    } else {
+        cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+    
     return `${base}${cleanPath}`;
 };
 
@@ -146,7 +154,9 @@ const fetchFirms = async () => {
     try {
         const response = await fetch(`${API_URL}/firms`);
         if (!response.ok) throw new Error('Failed to fetch firms');
-        firms.value = await response.json();
+        const data = await response.json();
+        console.log('DEBUG [ManageFirms]: Firms data received:', data);
+        firms.value = data;
     } catch (error) {
         console.error('Error fetching firms:', error);
         toast.add({ severity: 'error', summary: 'Hata', detail: 'Firmalar yüklenemedi', life: 3000 });
