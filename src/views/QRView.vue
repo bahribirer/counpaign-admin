@@ -34,11 +34,12 @@ const noQR = ref(false);
 const generatingQR = ref(false);
 let statusPollingInterval: number | null = null;
 
-const resolveImageUrl = (path: string) => {
-    if (!path) return null;
+const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
     if (path.startsWith('http')) return path;
-    const base = API_URL.replace('/api', '');
-    return `${base}/${path}`;
+    const base = API_URL.replace('/api', '').replace(/\/$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${cleanPath}`;
 };
 
 // Computed: points to be earned from purchase

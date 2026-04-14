@@ -87,6 +87,14 @@ const qrDataUrl = ref('');
 const qrFirmName = ref('');
 const generatingQR = ref<string | null>(null);
 
+const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    const base = API_URL.replace('/api', '').replace(/\/$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${cleanPath}`;
+};
+
 const showQR = async (firm: Firm) => {
     if (!firm.staticQR) return;
     try {
@@ -409,7 +417,9 @@ onMounted(() => {
                 <Column field="companyName" header="Firma Adı" sortable style="min-width: 200px">
                     <template #body="{ data }">
                         <div class="firm-name-cell">
-                            <div 
+                             <img v-if="data.logo" :src="resolveImageUrl(data.logo)" class="w-2rem h-2rem border-circle object-cover shadow-1" />
+                             <div 
+                                v-else
                                 class="color-indicator" 
                                 :style="{ backgroundColor: data.cardColor || '#EE2C2C' }"
                             ></div>
