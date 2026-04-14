@@ -58,9 +58,7 @@ const resolveImageUrl = (path: string | null | undefined): string | undefined =>
         cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
     
-    const finalUrl = `${base}${cleanPath}`;
-    console.log(`DEBUG [Image Resolve]: Input="${path}" -> Output="${finalUrl}"`);
-    return finalUrl;
+    return `${base}${cleanPath}`;
 };
 
 onMounted(fetchFirms);
@@ -69,7 +67,7 @@ onMounted(fetchFirms);
 <template>
     <div class="manage-campaigns">
         <div class="page-header mb-5">
-            <h1 class="text-900 font-bold">Kampanya Yönetimi [TEST]</h1>
+            <h1 class="text-900 font-bold">Kampanya Yönetimi</h1>
             <p class="text-secondary">Kampanyalarını yönetmek istediğiniz işletmeyi seçin</p>
         </div>
 

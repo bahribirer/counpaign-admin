@@ -155,7 +155,6 @@ const fetchFirms = async () => {
         const response = await fetch(`${API_URL}/firms`);
         if (!response.ok) throw new Error('Failed to fetch firms');
         const data = await response.json();
-        console.log('DEBUG [ManageFirms]: Firms data received:', data);
         firms.value = data;
     } catch (error) {
         console.error('Error fetching firms:', error);

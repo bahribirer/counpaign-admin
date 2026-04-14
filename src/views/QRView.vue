@@ -182,7 +182,6 @@ const startStaticPolling = () => {
             const data = await response.json();
 
             if (data.status === 'scanned') {
-                console.log('DEBUG [QRView]: Scanned data received:', data);
                 customer.value = data.customer;
                 qrTokenId.value = data.qrTokenId;
                 pollToken.value = data.pollToken || '';
