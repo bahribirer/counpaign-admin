@@ -69,7 +69,7 @@ onMounted(fetchFirms);
 <template>
     <div class="manage-campaigns">
         <div class="page-header mb-5">
-            <h1 class="text-900 font-bold">Kampanya Yönetimi</h1>
+            <h1 class="text-900 font-bold">Kampanya Yönetimi [TEST]</h1>
             <p class="text-secondary">Kampanyalarını yönetmek istediğiniz işletmeyi seçin</p>
         </div>
 
