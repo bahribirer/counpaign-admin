@@ -36,17 +36,17 @@ let statusPollingInterval: number | null = null;
 
 const resolveImageUrl = (path: string | null | undefined): string | undefined => {
     if (!path) return undefined;
-    if (path.startsWith('http')) return path;
-    
-    const base = API_URL.replace('/api', '').replace(/\/$/, '');
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+
+    const base = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
     let cleanPath = path;
-    
+
     if (!cleanPath.includes('/')) {
         cleanPath = `/uploads/${cleanPath}`;
     } else {
         cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
-    
+
     return `${base}${cleanPath}`;
 };
 
