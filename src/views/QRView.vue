@@ -38,8 +38,9 @@ const resolveImageUrl = (path: string | null | undefined): string | undefined =>
     if (!path) return undefined;
     if (path.startsWith('http') || path.startsWith('data:')) return path;
 
-    // Raw base64 (no data: prefix) — Flutter sends base64Encode(bytes) without prefix
-    if (path.length > 100 && !path.includes('/') && !path.includes('.')) {
+    // Raw base64 (no data: prefix) — Flutter sends base64Encode(bytes) without prefix.
+    // Base64 images are always >500 chars; normal file paths are short.
+    if (path.length > 500) {
         return `data:image/jpeg;base64,${path}`;
     }
 
