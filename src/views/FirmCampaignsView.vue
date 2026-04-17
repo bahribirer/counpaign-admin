@@ -44,6 +44,22 @@ interface Campaign {
     discountAmount: number;
     reflectToMenu: boolean;
     bundleName: string;
+    targetType: 'all' | 'specific' | 'birthday';
+    targetCustomers: string[];
+    birthdayMonth: number | null;
+}
+
+interface AudienceCustomer {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+    birthDate: string | null;
+    birthMonth?: number;
+    birthDay?: number;
+    points?: number;
+    stamps?: number;
+    totalVisits?: number;
 }
 
 interface Firm {
@@ -121,8 +137,32 @@ const emptyCampaign: Campaign = {
     menuItems: [],
     discountAmount: 0,
     reflectToMenu: false,
-    bundleName: ''
+    bundleName: '',
+    targetType: 'all',
+    targetCustomers: [],
+    birthdayMonth: null
 };
+
+// Hedef kitle durumu
+const targetTypeOptions = [
+    { label: 'Tüm Müşteriler', value: 'all', icon: 'pi-users' },
+    { label: 'Belirli Müşteriler', value: 'specific', icon: 'pi-user-edit' },
+    { label: 'Doğum Günü Kampanyası', value: 'birthday', icon: 'pi-gift' }
+];
+
+const monthOptions = [
+    { label: 'Tüm Aylar', value: null },
+    { label: 'Ocak', value: 1 }, { label: 'Şubat', value: 2 }, { label: 'Mart', value: 3 },
+    { label: 'Nisan', value: 4 }, { label: 'Mayıs', value: 5 }, { label: 'Haziran', value: 6 },
+    { label: 'Temmuz', value: 7 }, { label: 'Ağustos', value: 8 }, { label: 'Eylül', value: 9 },
+    { label: 'Ekim', value: 10 }, { label: 'Kasım', value: 11 }, { label: 'Aralık', value: 12 }
+];
+
+const audienceCustomers = ref<AudienceCustomer[]>([]);
+const birthdayCustomers = ref<AudienceCustomer[]>([]);
+const audienceLoading = ref(false);
+const selectedAudience = ref<AudienceCustomer[]>([]);
+const selectedBirthday = ref<AudienceCustomer[]>([]);
 
 const campaign = ref<Campaign>({ ...emptyCampaign });
 
@@ -201,13 +241,59 @@ const openNew = async () => {
             return;
         }
     }
-    campaign.value = { ...emptyCampaign, businessId: businessId.value! };
+    campaign.value = { ...emptyCampaign, businessId: businessId.value!, targetCustomers: [] };
     selectedFile.value = null;
     previewUrl.value = null;
     selectedProducts.value = [];
+    selectedAudience.value = [];
+    selectedBirthday.value = [];
     submitted.value = false;
     editing.value = false;
     campaignDialog.value = true;
+    // Hedef listeleri arka planda getir
+    fetchAudience();
+};
+
+const fetchAudience = async () => {
+    if (!businessId.value) return;
+    audienceLoading.value = true;
+    try {
+        const token = localStorage.getItem('token');
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`${API_URL}/campaigns/target-audience/${businessId.value}`, { headers });
+        if (res.ok) audienceCustomers.value = await res.json();
+    } catch (e) {
+        console.error('Audience fetch failed', e);
+    } finally {
+        audienceLoading.value = false;
+    }
+};
+
+const fetchBirthdayCustomers = async () => {
+    if (!businessId.value) return;
+    audienceLoading.value = true;
+    try {
+        const token = localStorage.getItem('token');
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const monthParam = campaign.value.birthdayMonth ? `?month=${campaign.value.birthdayMonth}` : '';
+        const res = await fetch(`${API_URL}/campaigns/birthday-customers/${businessId.value}${monthParam}`, { headers });
+        if (res.ok) birthdayCustomers.value = await res.json();
+    } catch (e) {
+        console.error('Birthday fetch failed', e);
+    } finally {
+        audienceLoading.value = false;
+    }
+};
+
+const formatBirthday = (iso: string | null) => {
+    if (!iso) return '-';
+    try {
+        return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' });
+    } catch {
+        return '-';
+    }
 };
 
 const onFileSelect = async (event: any) => {
@@ -316,6 +402,29 @@ const saveCampaign = async () => {
         formData.append('reflectToMenu', String(campaign.value.reflectToMenu));
         formData.append('bundleName', campaign.value.bundleName || '');
 
+        // Hedef kitle alanları
+        let targetIds: string[] = [];
+        if (campaign.value.targetType === 'specific') {
+            targetIds = selectedAudience.value.map((c) => c._id);
+        } else if (campaign.value.targetType === 'birthday') {
+            targetIds = selectedBirthday.value.map((c) => c._id);
+        }
+        formData.append('targetType', campaign.value.targetType || 'all');
+        formData.append('targetCustomers', JSON.stringify(targetIds));
+        if (campaign.value.targetType === 'birthday' && campaign.value.birthdayMonth) {
+            formData.append('birthdayMonth', String(campaign.value.birthdayMonth));
+        }
+
+        // Validasyon: hedef seçim zorunluluğu
+        if (campaign.value.targetType === 'specific' && targetIds.length === 0) {
+            toast.add({ severity: 'error', summary: 'Hata', detail: 'Lütfen en az bir müşteri seçin.', life: 3000 });
+            return;
+        }
+        if (campaign.value.targetType === 'birthday' && targetIds.length === 0) {
+            toast.add({ severity: 'error', summary: 'Hata', detail: 'Lütfen en az bir doğum günü müşterisi seçin.', life: 3000 });
+            return;
+        }
+
         if (selectedFile.value) {
             formData.append('headerImage', selectedFile.value);
         }
@@ -343,12 +452,18 @@ const saveCampaign = async () => {
     }
 };
 
-const editCampaign = (c: Campaign) => {
-    campaign.value = { ...c, businessId: businessId.value! };
+const editCampaign = async (c: Campaign) => {
+    campaign.value = {
+        ...c,
+        businessId: businessId.value!,
+        targetType: c.targetType || 'all',
+        targetCustomers: Array.isArray(c.targetCustomers) ? c.targetCustomers.map((x: any) => typeof x === 'string' ? x : x?._id).filter(Boolean) : [],
+        birthdayMonth: c.birthdayMonth ?? null
+    };
     editing.value = true;
     previewUrl.value = c.headerImage ? `${BASE_URL}${c.headerImage}` : null;
     selectedFile.value = null;
-    
+
     // Restore selected products from menuItems
     selectedProducts.value = (c.menuItems || []).map(item => ({
         _id: item.productId,
@@ -356,8 +471,22 @@ const editCampaign = (c: Campaign) => {
         price: item.price,
         category: ''
     }));
-    
+
+    selectedAudience.value = [];
+    selectedBirthday.value = [];
     campaignDialog.value = true;
+
+    // Hedef listelerini getir ve seçili müşterileri geri yükle
+    await fetchAudience();
+    if (campaign.value.targetType === 'birthday') {
+        await fetchBirthdayCustomers();
+    }
+    const targetSet = new Set(campaign.value.targetCustomers);
+    if (campaign.value.targetType === 'specific') {
+        selectedAudience.value = audienceCustomers.value.filter((c) => targetSet.has(c._id));
+    } else if (campaign.value.targetType === 'birthday') {
+        selectedBirthday.value = birthdayCustomers.value.filter((c) => targetSet.has(c._id));
+    }
 };
 
 const confirmDeleteCampaign = (c: Campaign) => {
@@ -437,7 +566,17 @@ onMounted(async () => {
                 </Column>
                 <Column field="title" header="Kampanya Başlığı" sortable style="min-width: 200px">
                     <template #body="{ data }">
-                        <span class="font-bold text-900">{{ data.title }}</span>
+                        <div class="flex flex-column gap-1">
+                            <span class="font-bold text-900">{{ data.title }}</span>
+                            <div v-if="data.targetType && data.targetType !== 'all'" class="flex align-items-center gap-1">
+                                <span v-if="data.targetType === 'specific'" class="text-xs px-2 py-1 border-round bg-blue-100 text-blue-700">
+                                    <i class="pi pi-user-edit text-xs mr-1"></i>{{ (data.targetCustomers || []).length }} müşteri
+                                </span>
+                                <span v-else-if="data.targetType === 'birthday'" class="text-xs px-2 py-1 border-round bg-pink-100 text-pink-700">
+                                    <i class="pi pi-gift text-xs mr-1"></i>Doğum Günü ({{ (data.targetCustomers || []).length }})
+                                </span>
+                            </div>
+                        </div>
                     </template>
                 </Column>
                 <Column header="Menü" style="width: 120px">
@@ -582,6 +721,120 @@ onMounted(async () => {
                             <div>
                                 <span class="font-bold">Menüye Yansıt</span>
                                 <small class="block text-500">Aktif olursa menünün "Fırsatlar" bölümünde görünür</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Audience Section -->
+                <div class="col-12">
+                    <div class="border-round border-1 surface-border p-4 mb-4" style="background: var(--surface-50);">
+                        <h3 class="mt-0 mb-3 text-primary">
+                            <i class="pi pi-users mr-2"></i>Hedef Kitle
+                        </h3>
+
+                        <!-- Target Type Radio/Button Group -->
+                        <div class="field mb-4">
+                            <label class="block font-bold mb-2">Kampanya kime gösterilsin?</label>
+                            <div class="flex flex-wrap gap-2">
+                                <Button v-for="opt in targetTypeOptions" :key="opt.value"
+                                    :label="opt.label" :icon="`pi ${opt.icon}`"
+                                    :severity="campaign.targetType === opt.value ? 'primary' : 'secondary'"
+                                    :outlined="campaign.targetType !== opt.value"
+                                    size="small"
+                                    @click="() => {
+                                        campaign.targetType = opt.value as any;
+                                        if (opt.value === 'birthday') fetchBirthdayCustomers();
+                                    }" />
+                            </div>
+                            <small class="text-500 block mt-2">
+                                <span v-if="campaign.targetType === 'all'">Kampanya sistemdeki tüm müşterilerin hesabında görünür.</span>
+                                <span v-else-if="campaign.targetType === 'specific'">Sadece seçtiğiniz müşterilerin hesabında görünür.</span>
+                                <span v-else>Profilinde doğum tarihi tanımlı müşteriler arasından seçim yapın.</span>
+                            </small>
+                        </div>
+
+                        <!-- Specific Customers Picker -->
+                        <div v-if="campaign.targetType === 'specific'" class="field mb-2">
+                            <label class="block font-bold mb-2">Müşteri Seç ({{ selectedAudience.length }} seçili)</label>
+                            <MultiSelect
+                                v-model="selectedAudience"
+                                :options="audienceCustomers"
+                                optionLabel="name"
+                                dataKey="_id"
+                                placeholder="Müşteri ara ve seç..."
+                                :filter="true"
+                                filterPlaceholder="İsim, telefon veya email ile ara..."
+                                display="chip"
+                                :loading="audienceLoading"
+                                class="w-full"
+                                :virtualScrollerOptions="{ itemSize: 46 }"
+                            >
+                                <template #option="slotProps">
+                                    <div class="flex justify-content-between align-items-center w-full">
+                                        <div>
+                                            <div class="font-semibold">{{ slotProps.option.name }}</div>
+                                            <div class="text-500 text-xs">{{ slotProps.option.phone || slotProps.option.email || '—' }}</div>
+                                        </div>
+                                        <span class="text-500 text-xs">{{ slotProps.option.totalVisits || 0 }} ziyaret</span>
+                                    </div>
+                                </template>
+                                <template #empty>
+                                    <div class="p-3 text-500">Cüzdanınızda eşleşen müşteri yok.</div>
+                                </template>
+                            </MultiSelect>
+                        </div>
+
+                        <!-- Birthday Campaign Picker -->
+                        <div v-if="campaign.targetType === 'birthday'">
+                            <div class="field mb-3">
+                                <label class="block font-bold mb-2">Doğum Günü Ayı Filtresi</label>
+                                <Select v-model="campaign.birthdayMonth" :options="monthOptions" optionLabel="label" optionValue="value"
+                                    placeholder="Ay seçin" class="w-full" @change="() => { selectedBirthday = []; fetchBirthdayCustomers(); }" />
+                                <small class="text-500 block mt-1">Doğum günü bu ayda olan müşteriler listelenir.</small>
+                            </div>
+
+                            <div class="field mb-2">
+                                <label class="block font-bold mb-2">
+                                    Doğum Günü Müşterileri
+                                    <span class="text-500 font-normal">({{ birthdayCustomers.length }} aday · {{ selectedBirthday.length }} seçili)</span>
+                                </label>
+                                <div class="flex gap-2 mb-2">
+                                    <Button label="Tümünü Seç" size="small" severity="secondary" text
+                                        :disabled="!birthdayCustomers.length"
+                                        @click="selectedBirthday = [...birthdayCustomers]" />
+                                    <Button label="Seçimi Temizle" size="small" severity="secondary" text
+                                        :disabled="!selectedBirthday.length"
+                                        @click="selectedBirthday = []" />
+                                </div>
+                                <MultiSelect
+                                    v-model="selectedBirthday"
+                                    :options="birthdayCustomers"
+                                    optionLabel="name"
+                                    dataKey="_id"
+                                    placeholder="Doğum günü müşterilerini seç..."
+                                    :filter="true"
+                                    filterPlaceholder="İsim veya telefon ile ara..."
+                                    display="chip"
+                                    :loading="audienceLoading"
+                                    class="w-full"
+                                    :virtualScrollerOptions="{ itemSize: 46 }"
+                                >
+                                    <template #option="slotProps">
+                                        <div class="flex justify-content-between align-items-center w-full">
+                                            <div>
+                                                <div class="font-semibold">{{ slotProps.option.name }}</div>
+                                                <div class="text-500 text-xs">{{ slotProps.option.phone || slotProps.option.email || '—' }}</div>
+                                            </div>
+                                            <span class="text-primary text-xs font-semibold">
+                                                <i class="pi pi-gift mr-1"></i>{{ formatBirthday(slotProps.option.birthDate) }}
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <template #empty>
+                                        <div class="p-3 text-500">Bu filtreyle eşleşen müşteri yok.</div>
+                                    </template>
+                                </MultiSelect>
                             </div>
                         </div>
                     </div>

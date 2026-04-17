@@ -30,6 +30,29 @@ interface Review {
 const authStore = useAuthStore();
 const toast = useToast();
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Mobil tarafta yüklenmiş profil fotosunu admin panelde göstermek için
+// (QRView'deki ile aynı mantık) — relative path'leri /uploads/ üzerinden
+// API origin'ine bağlar, base64 ham veriyi data URL'e çevirir.
+const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+
+    // Ham base64 (Flutter base64Encode prefix'siz gönderir) — uzun string'i data URL'e çevir
+    if (path.length > 500) {
+        return `data:image/jpeg;base64,${path}`;
+    }
+
+    const base = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    let cleanPath = path;
+    if (!cleanPath.includes('/')) {
+        cleanPath = `/uploads/${cleanPath}`;
+    } else {
+        cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+    return `${base}${cleanPath}`;
+};
+
 const reviews = ref<Review[]>([]);
 const loading = ref(true);
 const deleteDialog = ref(false);
@@ -140,7 +163,7 @@ onMounted(fetchReviews);
                     <template #body="{ data }">
                         <div class="flex align-items-center gap-3">
                             <div v-if="!data.isAnonymous && data.customer?.profileImage" class="w-2rem h-2rem border-circle overflow-hidden">
-                                <img :src="data.customer.profileImage" class="w-full h-full object-cover">
+                                <img :src="resolveImageUrl(data.customer.profileImage)" class="w-full h-full object-cover" @error="(e: any) => e.target.style.display = 'none'">
                             </div>
                             <div v-else class="w-2rem h-2rem border-circle bg-gray-200 flex align-items-center justify-content-center text-gray-500">
                                 <i class="pi pi-user"></i>

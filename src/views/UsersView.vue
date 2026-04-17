@@ -27,6 +27,8 @@ interface User {
     phoneNumber: string;
     gender: string;
     createdAt: string;
+    profileImage?: string | null;
+    birthDate?: string | null;
 }
 
 interface Firm {
@@ -38,6 +40,20 @@ const router = useRouter();
 const authStore = useAuthStore();
 const toast = useToast();
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Mobil tarafta yüklenmiş profil fotoğrafını panelde göstermek için
+// (QRView/ReviewsView ile aynı helper)
+const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    if (path.length > 500) return `data:image/jpeg;base64,${path}`;
+    const base = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    let cleanPath = path;
+    if (!cleanPath.includes('/')) cleanPath = `/uploads/${cleanPath}`;
+    else cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    return `${base}${cleanPath}`;
+};
+
 const users = ref<User[]>([]);
 const firms = ref<Firm[]>([]);
 
@@ -192,6 +208,19 @@ const formatDate = (dateString: string) => {
     });
 };
 
+const calculateAge = (birthDate: string | null | undefined): number | null => {
+    if (!birthDate) return null;
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age >= 0 && age < 150 ? age : null;
+};
+
 onMounted(() => {
     fetchUsers();
     fetchFirms();
@@ -251,7 +280,13 @@ onMounted(() => {
                 <Column field="name" header="Ad Soyad" sortable>
                     <template #body="{ data }">
                         <div class="flex align-items-center gap-2">
-                            <Avatar :label="data.name.charAt(0)" shape="circle" />
+                            <Avatar
+                                v-if="data.profileImage"
+                                :image="resolveImageUrl(data.profileImage)"
+                                shape="circle"
+                                @imageError="data.profileImage = null"
+                            />
+                            <Avatar v-else :label="(data.name?.charAt(0) || '?').toUpperCase()" shape="circle" />
                             <span class="font-semibold">{{ data.name }} {{ data.surname }}</span>
                         </div>
                     </template>
@@ -260,6 +295,15 @@ onMounted(() => {
                 <Column field="email" header="E-posta" sortable></Column>
                 
                 <Column field="phoneNumber" header="Telefon"></Column>
+
+                <Column field="birthDate" header="Yaş" sortable style="width: 90px">
+                    <template #body="{ data }">
+                        <span v-if="calculateAge(data.birthDate) !== null" class="font-medium text-700">
+                            {{ calculateAge(data.birthDate) }}
+                        </span>
+                        <span v-else class="text-400">—</span>
+                    </template>
+                </Column>
 
                 <Column field="createdAt" header="Katılma Tarihi" sortable>
                     <template #body="{ data }">

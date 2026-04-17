@@ -1,5 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
+// TypeScript augmentation for route meta
+declare module 'vue-router' {
+    interface RouteMeta {
+        requiresAuth?: boolean;
+    }
+}
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
@@ -116,6 +123,11 @@ const router = createRouter({
                     path: 'admin/gifts-detail',
                     name: 'AdminGiftsDetail',
                     component: () => import('../views/AdminGiftsDetailView.vue'),
+                },
+                {
+                    path: 'segment-users/:segment',
+                    name: 'SegmentUsers',
+                    component: () => import('../views/SegmentUsersView.vue'),
                 }
             ]
         }
@@ -130,13 +142,11 @@ router.beforeEach((to, _from, next) => {
     } else if (to.path === '/login' && token) {
         next('/dashboard');
     } else if (to.path === '/manage-campaigns' && token) {
-        // Only super_admin can access the all-firms campaign list
         try {
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 if (user.role !== 'super_admin') {
-                    // Business admin → redirect to their own campaigns
                     if (user.businessId) {
                         next(`/manage-campaigns/${user.businessId}`);
                     } else {

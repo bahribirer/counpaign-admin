@@ -1,13 +1,84 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useAuthStore } from '../stores/auth.store';
 import Chart from 'primevue/chart';
 import Button from 'primevue/button';
+import { useToast } from 'primevue/usetoast';
+
+// New analytics components
+import DateRangePicker from '../components/dashboard/DateRangePicker.vue';
+import KpiDelta from '../components/dashboard/KpiDelta.vue';
+import TopFirmsTable from '../components/dashboard/TopFirmsTable.vue';
+import FirmHealthCard from '../components/dashboard/FirmHealthCard.vue';
+import GrowthChart from '../components/dashboard/GrowthChart.vue';
+import CustomerSegmentsCard from '../components/dashboard/CustomerSegmentsCard.vue';
+import ActivityHeatmap from '../components/dashboard/ActivityHeatmap.vue';
+import TopCustomersTable from '../components/dashboard/TopCustomersTable.vue';
+import HeatmapDrillDownDialog from '../components/dashboard/HeatmapDrillDownDialog.vue';
+import KpiSkeleton from '../components/dashboard/KpiSkeleton.vue';
+
+import {
+    exportSuperAdminPdf,
+    exportFirmPdf
+} from '../services/report.service';
 
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const authStore = useAuthStore();
+
+// ---------- Analytics state (new — doesn't touch existing) ----------
+const range = ref<'7d' | '30d' | '90d'>('30d');
+
+// Super admin analytics
+const adminOverview = ref<any>(null);
+const topFirms = ref<any[]>([]);
+const firmHealth = ref<any>(null);
+const growthSeries = ref<any[]>([]);
+const analyticsLoading = ref(false);
+
+// Firm admin analytics
+const firmOverview = ref<any>(null);
+const firmSegments = ref<any>(null);
+const firmHeatmap = ref<any>(null);
+const topCustomers = ref<any[]>([]);
+const firmAnalyticsLoading = ref(false);
+
+// Heatmap drill-down state
+const drillDownOpen = ref(false);
+const drillDownCell = ref<{ day: string; dayIndex: number; hour: number } | null>(null);
+
+const onHeatmapCellClick = (payload: { day: string; dayIndex: number; hour: number }) => {
+    drillDownCell.value = payload;
+    drillDownOpen.value = true;
+};
+
+// ---------- Export state ----------
+const toast = useToast();
+const exporting = ref(false);
+
+const handleExport = async (role: 'super' | 'firm') => {
+    if (exporting.value) return;
+    exporting.value = true;
+    try {
+        if (role === 'super') {
+            await exportSuperAdminPdf(range.value);
+        } else {
+            const bid = authStore.user?.businessId;
+            const bname = authStore.user?.businessName || 'isletme';
+            if (!bid) throw new Error('İşletme bilgisi bulunamadı');
+            await exportFirmPdf(bid, bname, range.value);
+        }
+        toast.add({ severity: 'success', summary: 'Rapor hazır', detail: 'PDF dosyası indirildi', life: 3000 });
+    } catch (err: any) {
+        console.error('Export error:', err);
+        toast.add({ severity: 'error', summary: 'Rapor hatası', detail: err?.message || 'Rapor üretilemedi', life: 4000 });
+    } finally {
+        exporting.value = false;
+    }
+};
+
+// No longer needed: adminExportItems, firmExportItems
 
 // Super Admin Stats
 const stats = ref({
@@ -141,11 +212,66 @@ const updateFirmCharts = () => {
 
 
 
+// ---------- New analytics fetchers ----------
+const fetchAdminAnalytics = async () => {
+    analyticsLoading.value = true;
+    try {
+        const [ov, tf, fh, gr] = await Promise.all([
+            fetch(`${API_URL}/analytics/admin/overview?range=${range.value}`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/admin/top-firms?range=${range.value}&limit=10`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/admin/firm-health`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/admin/growth?range=${range.value}`).then((r) => r.json())
+        ]);
+        adminOverview.value = ov;
+        topFirms.value = Array.isArray(tf) ? tf : [];
+        firmHealth.value = fh;
+        growthSeries.value = Array.isArray(gr) ? gr : [];
+    } catch (err) {
+        console.error('Admin analytics error:', err);
+    } finally {
+        analyticsLoading.value = false;
+    }
+};
+
+const fetchFirmAnalytics = async () => {
+    if (!authStore.user?.businessId) return;
+    const bid = authStore.user.businessId;
+    firmAnalyticsLoading.value = true;
+    try {
+        const [ov, seg, hm, tc] = await Promise.all([
+            fetch(`${API_URL}/analytics/firm/overview?businessId=${bid}&range=${range.value}`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/firm/segments?businessId=${bid}`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/firm/heatmap?businessId=${bid}&range=${range.value}`).then((r) => r.json()),
+            fetch(`${API_URL}/analytics/firm/top-customers?businessId=${bid}&range=${range.value}&limit=10`).then((r) => r.json())
+        ]);
+        firmOverview.value = ov;
+        firmSegments.value = seg;
+        firmHeatmap.value = hm;
+        topCustomers.value = Array.isArray(tc) ? tc : [];
+    } catch (err) {
+        console.error('Firm analytics error:', err);
+    } finally {
+        firmAnalyticsLoading.value = false;
+    }
+};
+
+// Refetch on range change
+watch(range, () => {
+    if (authStore.user?.role === 'super_admin') {
+        fetchAdminAnalytics();
+    } else if (authStore.user?.role === 'business') {
+        fetchFirmAnalytics();
+    }
+});
+
+
 onMounted(() => {
     if (authStore.user?.role === 'super_admin') {
         fetchSuperAdminStats();
+        fetchAdminAnalytics();
     } else if (authStore.user?.role === 'business') {
         fetchFirmStats();
+        fetchFirmAnalytics();
     }
 });
 </script>
@@ -324,6 +450,66 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
+
+            <!-- ============================================== -->
+            <!-- YENİ: Gelişmiş Analitik (Super Admin)          -->
+            <!-- ============================================== -->
+            <div class="analytics-section mt-6">
+                <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-3 analytics-header">
+                    <div>
+                        <h2 class="text-2xl font-bold m-0">Gelişmiş Analitik</h2>
+                        <p class="text-secondary m-0 text-sm">Platform performansı ve büyüme trendleri</p>
+                    </div>
+                    <div class="flex align-items-center gap-2 flex-wrap">
+                        <DateRangePicker v-model="range" />
+                        <Button
+                            label="PDF Raporu İndir"
+                            icon="pi pi-file-pdf"
+                            severity="info"
+                            outlined
+                            :loading="exporting"
+                            @click="handleExport('super')"
+                        />
+                    </div>
+                </div>
+
+                <!-- KPI row with period comparison -->
+                <div class="grid mb-2">
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="adminOverview" title="Yeni Kullanıcı" :value="adminOverview.users.current" :delta="adminOverview.users.delta" icon="pi pi-user-plus" color="indigo" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="adminOverview" title="Yeni İşletme" :value="adminOverview.firms.current" :delta="adminOverview.firms.delta" icon="pi pi-building" color="red" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="adminOverview" title="İşlem Hacmi" :value="adminOverview.transactions.current" :delta="adminOverview.transactions.delta" icon="pi pi-sync" color="teal" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="adminOverview" title="Kullanılan Hediye" :value="adminOverview.gifts.current" :delta="adminOverview.gifts.delta" icon="pi pi-gift" color="pink" />
+                        <KpiSkeleton v-else />
+                    </div>
+                </div>
+
+                <!-- Growth chart + firm health -->
+                <div class="grid mt-2">
+                    <div class="col-12 xl:col-8">
+                        <GrowthChart :series="growthSeries" />
+                    </div>
+                    <div class="col-12 xl:col-4">
+                        <FirmHealthCard :health="firmHealth" />
+                    </div>
+                </div>
+
+                <!-- Top firms -->
+                <div class="grid mt-2">
+                    <div class="col-12">
+                        <TopFirmsTable :rows="topFirms" :loading="analyticsLoading" />
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Business Dashboard -->
@@ -454,6 +640,74 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
+
+            <!-- ============================================== -->
+            <!-- YENİ: Gelişmiş Analitik (Firma Admin)          -->
+            <!-- ============================================== -->
+            <div class="analytics-section mt-6">
+                <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-3 analytics-header">
+                    <div>
+                        <h2 class="text-2xl font-bold m-0">Gelişmiş Analitik</h2>
+                        <p class="text-secondary m-0 text-sm">Müşteri davranışı, yoğunluk analizi ve sadakat</p>
+                    </div>
+                    <div class="flex align-items-center gap-2 flex-wrap">
+                        <DateRangePicker v-model="range" />
+                        <Button
+                            label="PDF Raporu İndir"
+                            icon="pi pi-file-pdf"
+                            severity="info"
+                            outlined
+                            :loading="exporting"
+                            @click="handleExport('firm')"
+                        />
+                    </div>
+                </div>
+
+                <!-- KPI row with period comparison -->
+                <div class="grid mb-2">
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="firmOverview" title="İşlem" :value="firmOverview.transactions.current" :delta="firmOverview.transactions.delta" icon="pi pi-sync" color="indigo" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="firmOverview" title="Aktif Müşteri" :value="firmOverview.activeCustomers.current" :delta="firmOverview.activeCustomers.delta" icon="pi pi-users" color="green" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="firmOverview" title="Yeni Cüzdan" :value="firmOverview.newCustomers.current" :delta="firmOverview.newCustomers.delta" icon="pi pi-user-plus" color="blue" />
+                        <KpiSkeleton v-else />
+                    </div>
+                    <div class="col-12 md:col-6 lg:col-3">
+                        <KpiDelta v-if="firmOverview" title="Kullanılan Hediye" :value="firmOverview.gifts.current" :delta="firmOverview.gifts.delta" icon="pi pi-gift" color="pink" />
+                        <KpiSkeleton v-else />
+                    </div>
+                </div>
+
+                <!-- Segments + Heatmap -->
+                <div class="grid mt-2">
+                    <div class="col-12 xl:col-5">
+                        <CustomerSegmentsCard :segments="firmSegments" />
+                    </div>
+                    <div class="col-12 xl:col-7">
+                        <ActivityHeatmap :data="firmHeatmap" @cell-click="onHeatmapCellClick" />
+                    </div>
+                </div>
+
+                <!-- Top customers -->
+                <div class="grid mt-2">
+                    <div class="col-12">
+                        <TopCustomersTable :rows="topCustomers" :loading="firmAnalyticsLoading" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap drill-down dialog -->
+            <HeatmapDrillDownDialog
+                v-model:visible="drillDownOpen"
+                :cell="drillDownCell"
+                :business-id="authStore.user?.businessId"
+                :range="range"
+            />
         </div>
     </div>
 </template>
@@ -473,5 +727,20 @@ onMounted(() => {
 .kpi-card:hover {
     background: var(--surface-hover);
     transform: translateY(-2px);
+}
+
+/* Sticky analytics header */
+.analytics-section {
+    scroll-margin-top: 1rem;
+}
+.analytics-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 0.75rem 0;
+    background: var(--surface-ground, #fff);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--surface-border);
+    margin-bottom: 1rem !important;
 }
 </style>

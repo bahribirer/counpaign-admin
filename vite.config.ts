@@ -8,7 +8,7 @@ export default defineConfig({
     pure: ['console.log', 'console.debug', 'console.info'],
   },
   server: {
-    port: 5173,
+    port: Number(process.env.PORT) || 5173,
     host: true, // ağ üzerinden erişim için (aynı ağdaki telefon/tablet testi)
     proxy: {
       '/api': {

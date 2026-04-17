@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import Menu from 'primevue/menu';
@@ -35,10 +35,39 @@ const fetchNotifications = async () => {
     }
 };
 
+// Digital Clock Logic
+const currentTime = ref(new Date());
+let timeInterval: any = null;
+
+const formattedTime = computed(() => {
+    return currentTime.value.toLocaleTimeString('tr-TR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+});
+
+const formattedDate = computed(() => {
+    return currentTime.value.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+});
+
 onMounted(() => {
     fetchNotifications();
-    // Refresh every 30s
+    // Refresh notifications every 30s
     setInterval(fetchNotifications, 30000);
+
+    // Update time every second
+    timeInterval = setInterval(() => {
+        currentTime.value = new Date();
+    }, 1000);
+});
+
+onUnmounted(() => {
+    if (timeInterval) clearInterval(timeInterval);
 });
 
 // Close sidebar on route change (mobile only)
@@ -189,6 +218,13 @@ const pageTitle = computed(() => {
                 <Button icon="pi pi-bars" text rounded @click="toggleSidebar" class="mr-2" />
                 <span class="logo-text">{{ pageTitle }}</span>
             </div>
+
+            <div class="topbar-center">
+                <div class="digital-clock">
+                    <div class="clock-time">{{ formattedTime }}</div>
+                    <div class="clock-date">{{ formattedDate }}</div>
+                </div>
+            </div>
             
             <div class="topbar-end">
                 <!-- Notifications (Business Only) -->
@@ -262,6 +298,41 @@ const pageTitle = computed(() => {
     transition: opacity 0.2s ease;
 }
 
+.topbar-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.digital-clock {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(218, 165, 32, 0.15);
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(218, 165, 32, 0.05);
+}
+
+.clock-time {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #3E2723;
+    line-height: 1.2;
+}
+
+.clock-date {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #8D6E63;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .layout-sidebar {
     position: fixed;
     width: 260px;
@@ -326,6 +397,10 @@ const pageTitle = computed(() => {
     /* Topbar adjustments for mobile */
     .logo-text {
         font-size: 1.4rem;
+    }
+
+    .topbar-center {
+        display: none; /* Hide clock on mobile to save space */
     }
 
     .user-profile span {
@@ -417,4 +492,3 @@ const pageTitle = computed(() => {
     box-shadow: 0 6px 20px rgba(218, 165, 32, 0.35);
 }
 </style>
-

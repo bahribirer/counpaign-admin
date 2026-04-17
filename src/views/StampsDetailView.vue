@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth.store';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
+import { exportStampsDetailPdf } from '../services/report.service';
 
 interface StampTransaction {
     _id: string;
@@ -23,6 +24,17 @@ const API_URL = import.meta.env.VITE_API_URL;
 const transactions = ref<StampTransaction[]>([]);
 const isLoading = ref(true);
 const totalStamps = ref(0);
+const isExporting = ref(false);
+
+const handleExport = async () => {
+    if (transactions.value.length === 0) return;
+    isExporting.value = true;
+    try {
+        await exportStampsDetailPdf(`${authStore.user?.businessName} - Pul Kazanım Detayları`, transactions.value);
+    } finally {
+        isExporting.value = false;
+    }
+};
 
 const fetchData = async () => {
     if (!authStore.user?.businessId) return;
@@ -60,12 +72,22 @@ onMounted(() => {
 
 <template>
     <div class="detail-page p-4">
-        <div class="flex align-items-center gap-3 mb-4">
-            <Button icon="pi pi-arrow-left" text rounded @click="router.push('/dashboard')" />
-            <div>
-                <h1 class="text-2xl font-bold m-0">Kazanılan Pullar</h1>
-                <p class="text-secondary m-0">Müşterilerin kazandığı pul detayları</p>
+        <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div class="flex align-items-center gap-3">
+                <Button icon="pi pi-arrow-left" text rounded @click="router.push('/dashboard')" />
+                <div>
+                    <h1 class="text-2xl font-bold m-0">Kazanılan Pullar</h1>
+                    <p class="text-secondary m-0">Müşterilerin kazandığı pul detayları</p>
+                </div>
             </div>
+            <Button 
+                label="PDF Raporu İndir" 
+                icon="pi pi-file-pdf" 
+                severity="info" 
+                outlined 
+                :loading="isExporting"
+                @click="handleExport" 
+            />
         </div>
 
         <div class="stats-card mb-4">

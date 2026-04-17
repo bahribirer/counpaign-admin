@@ -8,6 +8,7 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
+import { RobotoRegular, RobotoBold } from '../assets/fonts/roboto-base64';
 import { useAuthStore } from '../stores/auth.store';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -339,6 +340,13 @@ onMounted(() => {
 onUnmounted(() => {
     stopPolling();
 });
+const transliterate = (text: string): string => {
+    const map: Record<string, string> = {
+        'ş': 's', 'Ş': 'S', 'ı': 'i', 'İ': 'I', 'ğ': 'g', 'Ğ': 'G',
+        'ü': 'u', 'Ü': 'U', 'ö': 'o', 'Ö': 'O', 'ç': 'c', 'Ç': 'C'
+    };
+    return text.split('').map(char => map[char] || char).join('');
+};
 
 const downloadQRAsPDF = async () => {
     if (!qrDataUrl.value || !companyName.value) return;
@@ -350,6 +358,23 @@ const downloadQRAsPDF = async () => {
             format: 'a4'
         });
 
+        let isFontLoaded = false;
+        try {
+            doc.addFileToVFS('Roboto-Regular.ttf', RobotoRegular);
+            doc.addFont('Roboto-Regular.ttf', 'CustomFont', 'normal');
+            doc.addFileToVFS('Roboto-Bold.ttf', RobotoBold);
+            doc.addFont('Roboto-Bold.ttf', 'CustomFont', 'bold');
+            doc.setFont('CustomFont', 'normal');
+            isFontLoaded = true;
+        } catch (e) {
+            console.error('QR PDF font registration error:', e);
+            doc.setFont('helvetica', 'normal');
+            isFontLoaded = false;
+        }
+
+        const safeT = (t: string) => isFontLoaded ? t : transliterate(t);
+        const currentFont = isFontLoaded ? 'CustomFont' : 'helvetica';
+
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         const centerX = pageWidth / 2;
@@ -359,20 +384,20 @@ const downloadQRAsPDF = async () => {
         doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
         // Top accent bar
-        doc.setFillColor(238, 44, 44);
+        doc.setFillColor(99, 102, 241);
         doc.rect(0, 0, pageWidth, 8, 'F');
 
         // Company Name
-        doc.setFont('helvetica', 'bold');
+        doc.setFont(currentFont, 'bold');
         doc.setFontSize(28);
         doc.setTextColor(30, 30, 30);
-        doc.text(companyName.value, centerX, 40, { align: 'center' });
+        doc.text(safeT(companyName.value), centerX, 40, { align: 'center' });
 
         // Subtitle
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(currentFont, 'normal');
         doc.setFontSize(14);
         doc.setTextColor(120, 120, 120);
-        doc.text('QR Kodu Taratarak Puan Kazanin!', centerX, 52, { align: 'center' });
+        doc.text(safeT('QR Kodu Taratarak Puan Kazanın!'), centerX, 52, { align: 'center' });
 
         // Divider line
         doc.setDrawColor(220, 220, 220);
@@ -395,28 +420,28 @@ const downloadQRAsPDF = async () => {
 
         // Instructions
         const instructionY = qrY + qrSize + 30;
-        doc.setFont('helvetica', 'bold');
+        doc.setFont(currentFont, 'bold');
         doc.setFontSize(16);
         doc.setTextColor(50, 50, 50);
-        doc.text('Scan & Earn Points', centerX, instructionY, { align: 'center' });
+        doc.text(safeT('Tarayın & Puan Kazanın'), centerX, instructionY, { align: 'center' });
 
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(currentFont, 'normal');
         doc.setFontSize(12);
         doc.setTextColor(100, 100, 100);
         const steps = [
-            '1. Open the Counpaign app',
-            '2. Tap the QR Scan button',
-            '3. Scan this QR code',
-            '4. Your points will be added after confirmation'
+            '1. Counpaign uygulamasını açın',
+            '2. QR Tarama butonuna dokunun',
+            '3. Bu QR kodu taratın',
+            '4. Onaylandıktan sonra puanlarınız eklenecektir'
         ];
         steps.forEach((step, i) => {
-            doc.text(step, centerX, instructionY + 12 + (i * 8), { align: 'center' });
+            doc.text(safeT(step), centerX, instructionY + 12 + (i * 8), { align: 'center' });
         });
 
         // Bottom branding
-        doc.setFillColor(238, 44, 44);
+        doc.setFillColor(99, 102, 241);
         doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
-        doc.setFont('helvetica', 'bold');
+        doc.setFont(currentFont, 'bold');
         doc.setFontSize(14);
         doc.setTextColor(255, 255, 255);
         doc.text('COUNPAIGN', centerX, pageHeight - 8, { align: 'center' });
@@ -424,7 +449,7 @@ const downloadQRAsPDF = async () => {
         // Save
         doc.save(`${companyName.value}_QR_Kod.pdf`);
 
-        toast.add({ severity: 'success', summary: 'Basarili', detail: 'QR kod PDF olarak indirildi', life: 2000 });
+        toast.add({ severity: 'success', summary: 'Başarılı', detail: 'QR kod PDF olarak indirildi', life: 2000 });
     } catch (error: any) {
         console.error('PDF generation error:', error);
         toast.add({ severity: 'error', summary: 'Hata', detail: 'PDF oluşturulamadı', life: 3000 });
