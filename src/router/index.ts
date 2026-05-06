@@ -128,6 +128,16 @@ const router = createRouter({
                     path: 'segment-users/:segment',
                     name: 'SegmentUsers',
                     component: () => import('../views/SegmentUsersView.vue'),
+                },
+                {
+                    path: 'tables',
+                    name: 'Tables',
+                    component: () => import('../views/TablesView.vue'),
+                },
+                {
+                    path: 'orders',
+                    name: 'Orders',
+                    component: () => import('../views/OrdersView.vue'),
                 }
             ]
         }

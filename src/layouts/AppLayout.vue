@@ -180,6 +180,16 @@ const items = computed(() => {
                     label: 'Değerlendirmeler',
                     icon: 'pi pi-star',
                     command: () => router.push('/reviews')
+                },
+                {
+                    label: 'Masalar',
+                    icon: 'pi pi-table',
+                    command: () => router.push('/tables')
+                },
+                {
+                    label: 'Siparişler',
+                    icon: 'pi pi-receipt',
+                    command: () => router.push('/orders')
                 }
             ]
         });
